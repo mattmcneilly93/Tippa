@@ -2,9 +2,18 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 
-function origin() {
+async function origin() {
+  const headerStore = await headers();
+  const host = headerStore.get("x-forwarded-host") ?? headerStore.get("host");
+  if (host) {
+    const protocol =
+      headerStore.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+    return `${protocol}://${host}`;
+  }
+
   return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 }
 
@@ -18,7 +27,7 @@ export async function signInWithOAuth(formData: FormData) {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider,
     options: {
-      redirectTo: `${origin()}/auth/callback`
+      redirectTo: `${await origin()}/auth/callback`
     }
   });
 
@@ -32,7 +41,7 @@ export async function signInWithMagicLink(formData: FormData) {
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: `${origin()}/auth/callback`
+      emailRedirectTo: `${await origin()}/auth/callback`
     }
   });
 

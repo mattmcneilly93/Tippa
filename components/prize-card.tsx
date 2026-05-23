@@ -1,0 +1,84 @@
+import { Gift, WalletCards } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+type PrizeGroup = {
+  prize_mode: "none" | "sponsored" | "buy_in" | "hybrid";
+  currency: string;
+  sponsor_name: string | null;
+  base_prize_amount: number | null;
+  buy_in_amount: number | null;
+  buy_in_required: boolean;
+  payout_description: string | null;
+};
+
+export function PrizeCard({
+  group,
+  memberCount,
+  paidCount
+}: {
+  group: PrizeGroup;
+  memberCount?: number;
+  paidCount?: number;
+}) {
+  const buyInPool = (group.buy_in_amount ?? 0) * (paidCount ?? 0);
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle>Prize</CardTitle>
+          <Badge variant="warm">Outside payments</Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex gap-3">
+          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--tippa-accent)] text-primary">
+            {group.prize_mode === "none" ? (
+              <Gift className="h-5 w-5" />
+            ) : (
+              <WalletCards className="h-5 w-5" />
+            )}
+          </span>
+          <div>
+            <p className="font-bold">
+              {group.prize_mode === "none" && "Just for bragging rights"}
+              {group.prize_mode === "sponsored" &&
+                `Sponsored by ${group.sponsor_name || "someone generous"}`}
+              {group.prize_mode === "buy_in" &&
+                `${formatCurrency(group.buy_in_amount, group.currency)} buy-in`}
+              {group.prize_mode === "hybrid" &&
+                `${formatCurrency(group.base_prize_amount, group.currency)} + buy-in pool`}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Payments are handled outside the app.
+            </p>
+          </div>
+        </div>
+        {group.prize_mode !== "none" ? (
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="rounded-2xl bg-muted p-3">
+              <p className="text-muted-foreground">Base</p>
+              <p className="font-black">
+                {formatCurrency(group.base_prize_amount ?? 0, group.currency)}
+              </p>
+            </div>
+            <div className="rounded-2xl bg-muted p-3">
+              <p className="text-muted-foreground">Buy-in pool</p>
+              <p className="font-black">{formatCurrency(buyInPool, group.currency)}</p>
+            </div>
+          </div>
+        ) : null}
+        {memberCount != null && paidCount != null ? (
+          <p className="text-sm text-muted-foreground">
+            {paidCount} of {memberCount} marked paid.
+          </p>
+        ) : null}
+        {group.payout_description ? (
+          <p className="rounded-2xl bg-[#fff4d6] p-3 text-sm">{group.payout_description}</p>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}

@@ -1,0 +1,96 @@
+import type {
+  NormalizedMatch,
+  NormalizedTournamentData,
+  TournamentAdapter
+} from "@/lib/tournaments/types";
+
+const SOURCE_URL =
+  "https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json";
+
+type OpenFootballMatch = {
+  round?: string;
+  date?: string;
+  time?: string;
+  team1?: string;
+  team2?: string;
+  group?: string;
+  score?: {
+    ft?: [number, number];
+  };
+};
+
+type OpenFootballTournament = {
+  matches: OpenFootballMatch[];
+};
+
+function normalizeKickoff(date?: string, time?: string) {
+  if (!date) return null;
+  if (!time) return `${date}T00:00:00.000Z`;
+
+  const match = time.match(/^(\d{1,2}):(\d{2})\s+UTC([+-]\d{1,2})$/);
+  if (!match) return `${date}T00:00:00.000Z`;
+
+  const [, hour, minute, offset] = match;
+  const offsetNumber = Number(offset);
+  const utcHour = Number(hour) - offsetNumber;
+  const kickoff = new Date(Date.UTC(2026, 0, 1));
+  const [year, month, day] = date.split("-").map(Number);
+  kickoff.setUTCFullYear(year, month - 1, day);
+  kickoff.setUTCHours(utcHour, Number(minute), 0, 0);
+  return kickoff.toISOString();
+}
+
+function statusFor(match: OpenFootballMatch): NormalizedMatch["status"] {
+  if (match.score?.ft) return "finished";
+  return "scheduled";
+}
+
+function externalIdFor(match: OpenFootballMatch, index: number) {
+  return [
+    match.date ?? "unknown-date",
+    match.round ?? "unknown-round",
+    match.group ?? "knockout",
+    match.team1 ?? "tbd-home",
+    match.team2 ?? "tbd-away",
+    index + 1
+  ]
+    .join("-")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
+
+export const openFootballWorldCup2026Adapter: TournamentAdapter = {
+  tournamentCode: "world-cup-2026",
+  async fetchTournamentData(): Promise<NormalizedTournamentData> {
+    const response = await fetch(SOURCE_URL, {
+      next: { revalidate: 60 * 60 }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch World Cup 2026 data: ${response.status}`);
+    }
+
+    const source = (await response.json()) as OpenFootballTournament;
+    const matches = source.matches.map((match, index): NormalizedMatch => {
+      const score = match.score?.ft ?? [null, null];
+      return {
+        externalId: externalIdFor(match, index),
+        tournamentCode: "world-cup-2026",
+        stage: match.round ?? "Fixture",
+        groupName: match.group,
+        homeTeamName: match.team1 ?? "TBD",
+        awayTeamName: match.team2 ?? "TBD",
+        kickoffTime: normalizeKickoff(match.date, match.time),
+        homeScore: score[0],
+        awayScore: score[1],
+        status: statusFor(match)
+      };
+    });
+
+    return {
+      tournamentCode: "world-cup-2026",
+      matches
+    };
+  }
+};

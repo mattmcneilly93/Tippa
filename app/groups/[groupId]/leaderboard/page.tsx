@@ -14,7 +14,7 @@ export default async function LeaderboardPage({
   const [{ data: tablePredictions }, { data: matchPredictions }, { data: knockoutPredictions }] =
     await Promise.all([
       supabase.from("group_table_predictions").select("user_id,points").eq("group_id", groupId),
-      supabase.from("match_predictions").select("user_id,points").eq("group_id", groupId),
+      supabase.from("match_predictions").select("user_id,points,prediction_phase").eq("group_id", groupId),
       supabase
         .from("knockout_prediction_entries")
         .select("user_id,points,round_key")

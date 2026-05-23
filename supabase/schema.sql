@@ -6,7 +6,7 @@ create type match_status as enum ('scheduled', 'live', 'finished', 'postponed', 
 create type stage_type as enum ('group', 'knockout');
 create type round_key as enum ('group', 'round_of_32', 'round_of_16', 'quarter_final', 'semi_final', 'third_place', 'final');
 create type group_stage_prediction_mode as enum ('table', 'match_outcome', 'exact_score');
-create type knockout_prediction_mode as enum ('winner_bracket');
+create type knockout_prediction_mode as enum ('winner_bracket', 'exact_score');
 create type scoring_preset as enum ('simple', 'balanced', 'high_stakes', 'custom');
 create type match_outcome as enum ('home', 'draw', 'away');
 
@@ -146,6 +146,7 @@ create table public.match_predictions (
   group_id uuid not null references public.groups(id) on delete cascade,
   user_id uuid not null references public.profiles(id) on delete cascade,
   match_id uuid not null references public.matches(id) on delete cascade,
+  prediction_phase stage_type not null default 'group',
   predicted_outcome match_outcome,
   home_score int check (home_score >= 0),
   away_score int check (away_score >= 0),

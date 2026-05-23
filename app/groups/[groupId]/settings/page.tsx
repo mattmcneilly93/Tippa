@@ -69,6 +69,21 @@ export default async function SettingsPage({
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Knockout predictions</Label>
+                  <Select
+                    name="knockoutPredictionMode"
+                    defaultValue={predictionSettings?.knockout_prediction_mode ?? "winner_bracket"}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="winner_bracket">Pick bracket winners</SelectItem>
+                      <SelectItem value="exact_score">Predict knockout scores</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <label className="flex items-center gap-2 text-sm font-semibold md:col-span-2">
                   <input
                     name="includeThirdPlace"

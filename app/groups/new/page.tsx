@@ -71,6 +71,18 @@ export default function NewGroupPage() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label>Knockout predictions</Label>
+                <Select name="knockoutPredictionMode" defaultValue="winner_bracket">
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="winner_bracket">Pick bracket winners</SelectItem>
+                    <SelectItem value="exact_score">Predict knockout scores</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <label className="flex items-center gap-2 text-sm font-semibold md:col-span-2">
                 <input name="includeThirdPlace" type="checkbox" className="h-4 w-4" />
                 Include third-place match in knockout predictions

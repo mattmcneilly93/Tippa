@@ -21,6 +21,7 @@ const tableSchema = z.object({
 const matchSchema = z.object({
   groupId: z.string().uuid(),
   matchId: z.string().uuid(),
+  predictionPhase: z.enum(["group", "knockout"]).default("group"),
   predictedOutcome: z.enum(["home", "draw", "away"]).optional(),
   homeScore: z.coerce.number().int().min(0).max(99).optional(),
   awayScore: z.coerce.number().int().min(0).max(99).optional()
@@ -109,12 +110,17 @@ export async function saveMatchPrediction(formData: FormData) {
   const parsed = matchSchema.parse({
     groupId: formData.get("groupId"),
     matchId: formData.get("matchId"),
+    predictionPhase: formData.get("predictionPhase") || "group",
     predictedOutcome: formData.get("predictedOutcome") || undefined,
     homeScore: formData.get("homeScore") || undefined,
     awayScore: formData.get("awayScore") || undefined
   });
   const { supabase, user } = await requireUser();
-  await assertGroupStageUnlocked(supabase, parsed.groupId);
+  if (parsed.predictionPhase === "knockout") {
+    await assertKnockoutUnlocked(supabase, parsed.groupId);
+  } else {
+    await assertGroupStageUnlocked(supabase, parsed.groupId);
+  }
 
   const { data: match, error: matchError } = await supabase
     .from("matches")
@@ -145,6 +151,7 @@ export async function saveMatchPrediction(formData: FormData) {
       group_id: parsed.groupId,
       user_id: user.id,
       match_id: parsed.matchId,
+      prediction_phase: parsed.predictionPhase,
       predicted_outcome: parsed.predictedOutcome ?? null,
       home_score: parsed.homeScore ?? null,
       away_score: parsed.awayScore ?? null,

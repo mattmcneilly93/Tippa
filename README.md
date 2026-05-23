@@ -6,7 +6,7 @@
     <strong>Private football prediction pools for friends, families, and teams.</strong>
   </p>
   <p>
-    Rank group tables, fill knockout brackets, track leaderboards, and keep the pool private with invite codes.
+    Rank group tables, predict knockout scores or winners, track leaderboards, and keep the pool private with invite codes.
   </p>
   <p>
     <img alt="Next.js" src="https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=nextdotjs" />
@@ -23,7 +23,7 @@ Tippa is a tournament prediction pool app built with Next.js, Supabase, and Verc
 The default game is intentionally simple:
 
 - Group stage: rank each group table.
-- Knockout stage: pick winners in the bracket after group play is done.
+- Knockout stage: pick winners in the bracket, or predict knockout scores, after group play is done.
 - Leaderboard: group-stage points + knockout points = total score.
 
 Groups can also choose easier or harder formats:
@@ -31,7 +31,7 @@ Groups can also choose easier or harder formats:
 - Rank final group tables.
 - Pick group-stage match winners.
 - Predict exact group-stage scores.
-- Pick knockout winners in a full bracket.
+- Pick knockout winners in a full bracket or predict knockout scores.
 - Optionally include the third-place match.
 - Use scoring presets or custom point values.
 
@@ -44,7 +44,7 @@ The current tournament adapter targets the 2026 World Cup data from the openfoot
 - Configurable prediction modes per group
 - Group-stage lock at first tournament kickoff
 - Admin-opened knockout prediction phase
-- Full knockout winner bracket
+- Full knockout winner bracket or knockout score prediction mode
 - Configurable scoring presets plus advanced custom scoring
 - Leaderboard breakdown for group-stage and knockout points
 - Configurable prize modes: none, sponsored, buy-in, or hybrid
@@ -184,7 +184,7 @@ Authorization: Bearer <CRON_SECRET>
 3. Group-stage predictions lock at the first group-stage kickoff.
 4. Admin syncs tournament data after group play when knockout fixtures are known.
 5. Admin opens knockout predictions.
-6. Members pick knockout winners before the first knockout kickoff.
+6. Members pick knockout winners or scores before the first knockout kickoff.
 7. Scores are recalculated after match results are synced or overridden.
 
 ## Deployment

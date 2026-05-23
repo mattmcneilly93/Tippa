@@ -42,6 +42,7 @@ function settingsFor(group: { group_prediction_settings?: unknown }) {
   return (Array.isArray(raw) ? raw[0] : raw) as
     | {
         group_stage_prediction_mode: "table" | "match_outcome" | "exact_score";
+        knockout_prediction_mode: "winner_bracket" | "exact_score";
         include_third_place: boolean;
         knockout_opened_at: string | null;
         knockout_locked_at: string | null;
@@ -63,6 +64,7 @@ export default async function PredictionsPage({
   const { supabase, user, group, isAdmin } = await getGroupContext(groupId);
   const settings = settingsFor(group) ?? {
     group_stage_prediction_mode: "table",
+    knockout_prediction_mode: "winner_bracket",
     include_third_place: false,
     knockout_opened_at: null,
     knockout_locked_at: null
@@ -195,13 +197,27 @@ export default async function PredictionsPage({
               description="An admin opens the bracket after group play when the knockout fixtures are known."
             />
           ) : knockoutMatches.length ? (
-            <KnockoutMode
-              groupId={groupId}
-              locked={knockoutLocked}
-              includeThirdPlace={settings.include_third_place}
-              matches={knockoutMatches}
-              predictionByMatch={knockoutPredictionByMatch}
-            />
+            settings.knockout_prediction_mode === "exact_score" ? (
+              <ExactScoreMode
+                groupId={groupId}
+                locked={knockoutLocked}
+                matches={
+                  settings.include_third_place
+                    ? knockoutMatches
+                    : knockoutMatches.filter((match) => match.round_key !== "third_place")
+                }
+                predictionByMatch={matchPredictionByMatch}
+                phase="knockout"
+              />
+            ) : (
+              <KnockoutMode
+                groupId={groupId}
+                locked={knockoutLocked}
+                includeThirdPlace={settings.include_third_place}
+                matches={knockoutMatches}
+                predictionByMatch={knockoutPredictionByMatch}
+              />
+            )
           ) : (
             <EmptyState
               title="No knockout fixtures yet"
@@ -292,6 +308,7 @@ function MatchOutcomeMode({
           <form key={match.id} action={saveMatchPrediction} className="grid gap-3 rounded-3xl bg-muted p-4 md:grid-cols-[1fr_auto]">
             <input type="hidden" name="groupId" value={groupId} />
             <input type="hidden" name="matchId" value={match.id} />
+            <input type="hidden" name="predictionPhase" value="group" />
             <div>
               <p className="font-black">
                 {match.home_team_name} vs {match.away_team_name}
@@ -323,12 +340,14 @@ function ExactScoreMode({
   groupId,
   locked,
   matches,
-  predictionByMatch
+  predictionByMatch,
+  phase = "group"
 }: {
   groupId: string;
   locked: boolean;
   matches: MatchRow[];
   predictionByMatch: Map<string, { home_score: number | null; away_score: number | null; points: number }>;
+  phase?: "group" | "knockout";
 }) {
   return (
     <div className="space-y-3">
@@ -338,6 +357,7 @@ function ExactScoreMode({
           <form key={match.id} action={saveMatchPrediction} className="grid gap-3 rounded-3xl bg-muted p-4 md:grid-cols-[1fr_auto]">
             <input type="hidden" name="groupId" value={groupId} />
             <input type="hidden" name="matchId" value={match.id} />
+            <input type="hidden" name="predictionPhase" value={phase} />
             <div>
               <p className="font-black">
                 {match.home_team_name} vs {match.away_team_name}

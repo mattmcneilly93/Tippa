@@ -1,5 +1,5 @@
 export type GroupStagePredictionMode = "table" | "match_outcome" | "exact_score";
-export type KnockoutPredictionMode = "winner_bracket";
+export type KnockoutPredictionMode = "winner_bracket" | "exact_score";
 export type ScoringPreset = "simple" | "balanced" | "high_stakes" | "custom";
 export type MatchOutcome = "home" | "draw" | "away";
 export type StageType = "group" | "knockout";

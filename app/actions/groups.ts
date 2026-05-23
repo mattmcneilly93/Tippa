@@ -12,6 +12,7 @@ const createGroupSchema = z.object({
   tournamentCode: z.string().min(1),
   inviteCode: z.string().trim().min(3).max(24),
   groupStagePredictionMode: z.enum(["table", "match_outcome", "exact_score"]).default("table"),
+  knockoutPredictionMode: z.enum(["winner_bracket", "exact_score"]).default("winner_bracket"),
   includeThirdPlace: z.coerce.boolean().optional(),
   scoringPreset: z.enum(["simple", "balanced", "high_stakes", "custom"]).default("balanced"),
   prizeMode: z.enum(["none", "sponsored", "buy_in", "hybrid"]),
@@ -71,6 +72,7 @@ export async function createGroup(formData: FormData) {
     tournamentCode: formData.get("tournamentCode"),
     inviteCode: formData.get("inviteCode"),
     groupStagePredictionMode: formData.get("groupStagePredictionMode") || "table",
+    knockoutPredictionMode: formData.get("knockoutPredictionMode") || "winner_bracket",
     includeThirdPlace: formData.get("includeThirdPlace") === "on",
     scoringPreset: formData.get("scoringPreset") || "balanced",
     prizeMode: formData.get("prizeMode"),
@@ -143,6 +145,7 @@ export async function createGroup(formData: FormData) {
   const { error: settingsError } = await service.from("group_prediction_settings").insert({
     group_id: group.id,
     group_stage_prediction_mode: parsed.groupStagePredictionMode,
+    knockout_prediction_mode: parsed.knockoutPredictionMode,
     include_third_place: parsed.includeThirdPlace ?? false,
     scoring_preset: parsed.scoringPreset,
     ...scoreSettingsFor(parsed)
@@ -193,6 +196,7 @@ export async function updateGroupSettings(formData: FormData) {
     .parse({
       name: formData.get("name"),
       groupStagePredictionMode: formData.get("groupStagePredictionMode") || "table",
+      knockoutPredictionMode: formData.get("knockoutPredictionMode") || "winner_bracket",
       includeThirdPlace: formData.get("includeThirdPlace") === "on",
       scoringPreset: formData.get("scoringPreset") || "balanced",
       prizeMode: formData.get("prizeMode"),
@@ -238,6 +242,7 @@ export async function updateGroupSettings(formData: FormData) {
     .from("group_prediction_settings")
     .update({
       group_stage_prediction_mode: parsed.groupStagePredictionMode,
+      knockout_prediction_mode: parsed.knockoutPredictionMode,
       include_third_place: parsed.includeThirdPlace ?? false,
       scoring_preset: parsed.scoringPreset,
       ...scoreSettingsFor(parsed)

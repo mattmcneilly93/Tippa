@@ -10,6 +10,10 @@ type PointRow = {
   points: number;
 };
 
+type MatchPointRow = PointRow & {
+  prediction_phase?: "group" | "knockout";
+};
+
 type KnockoutPointRow = PointRow & {
   round_key: string;
 };
@@ -33,14 +37,23 @@ export function buildLeaderboard({
 }: {
   members: Member[];
   tablePredictions: PointRow[];
-  matchPredictions: PointRow[];
+  matchPredictions: MatchPointRow[];
   knockoutPredictions: KnockoutPointRow[];
 }): LeaderboardRow[] {
   return members
     .map((member) => {
       const groupStagePoints =
-        sumPoints(tablePredictions, member.user_id) + sumPoints(matchPredictions, member.user_id);
-      const knockoutPoints = sumPoints(knockoutPredictions, member.user_id);
+        sumPoints(tablePredictions, member.user_id) +
+        sumPoints(
+          matchPredictions.filter((prediction) => prediction.prediction_phase !== "knockout"),
+          member.user_id
+        );
+      const knockoutPoints =
+        sumPoints(knockoutPredictions, member.user_id) +
+        sumPoints(
+          matchPredictions.filter((prediction) => prediction.prediction_phase === "knockout"),
+          member.user_id
+        );
       const championCorrect = knockoutPredictions.filter(
         (prediction) =>
           prediction.user_id === member.user_id &&

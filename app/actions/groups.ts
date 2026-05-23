@@ -222,7 +222,23 @@ export async function updateGroupSettings(formData: FormData) {
     });
 
   const supabase = await createClient();
-  const { error } = await supabase
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { data: member, error: memberError } = await supabase
+    .from("group_members")
+    .select("role")
+    .eq("group_id", groupId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (memberError) throw memberError;
+  if (member?.role !== "admin") throw new Error("Forbidden");
+
+  const service = createServiceClient();
+  const { error } = await service
     .from("groups")
     .update({
       name: parsed.name,
@@ -238,7 +254,7 @@ export async function updateGroupSettings(formData: FormData) {
 
   if (error) throw error;
 
-  const { error: settingsError } = await supabase
+  const { error: settingsError } = await service
     .from("group_prediction_settings")
     .update({
       group_stage_prediction_mode: parsed.groupStagePredictionMode,
@@ -251,6 +267,8 @@ export async function updateGroupSettings(formData: FormData) {
 
   if (settingsError) throw settingsError;
   revalidatePath(`/groups/${groupId}`);
+  revalidatePath(`/groups/${groupId}/settings`);
+  revalidatePath("/dashboard");
 }
 
 export async function leaveGroup(formData: FormData) {

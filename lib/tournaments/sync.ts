@@ -1,4 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/server";
+import { flagForTeam } from "@/lib/team-flags";
 import { getAdapterByCode, supportedTournaments } from "@/lib/tournaments/registry";
 import type { NormalizedMatch } from "@/lib/tournaments/types";
 import { recalculateScoresForTournament } from "@/lib/tournaments/sync-scores";
@@ -10,6 +11,7 @@ export async function syncTournament(tournamentCode: string) {
   const supabase = createServiceClient();
   const tournament = supportedTournaments.find((item) => item.code === tournamentCode);
   if (!tournament) throw new Error(`Unsupported tournament ${tournamentCode}`);
+  const data = await adapter.fetchTournamentData();
 
   const { data: tournamentRow, error: tournamentError } = await supabase
     .from("tournaments")
@@ -20,6 +22,8 @@ export async function syncTournament(tournamentCode: string) {
         year: tournament.year,
         source: tournament.source,
         is_supported: tournament.isSupported,
+        group_direct_advancers: data.groupStageAdvancement.directAdvancersPerGroup,
+        group_best_third_place_advancers: data.groupStageAdvancement.bestThirdPlaceAdvancers,
         theme: tournament.theme
       },
       { onConflict: "code" }
@@ -29,10 +33,11 @@ export async function syncTournament(tournamentCode: string) {
 
   if (tournamentError) throw tournamentError;
 
-  const data = await adapter.fetchTournamentData();
   const teamNames = Array.from(
     new Set(
-      data.matches.flatMap((match) => [match.homeTeamName, match.awayTeamName]).filter(Boolean)
+      data.matches
+        .flatMap((match) => [match.homeTeamName, match.awayTeamName])
+        .filter((name): name is string => Boolean(name) && name !== "TBD")
     )
   );
 
@@ -40,7 +45,8 @@ export async function syncTournament(tournamentCode: string) {
     teamNames.map((name) => ({
       tournament_id: tournamentRow.id,
       name,
-      short_name: name
+      short_name: name,
+      flag_emoji: flagForTeam(name)
     })),
     { onConflict: "tournament_id,name" }
   );

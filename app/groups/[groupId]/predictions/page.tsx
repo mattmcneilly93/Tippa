@@ -1,19 +1,16 @@
 import { format } from "date-fns";
-import { Lock, Trophy } from "lucide-react";
-import {
-  saveGroupTablePrediction,
-  saveKnockoutPrediction,
-  saveMatchPrediction
-} from "@/app/actions/predictions";
+import { Trophy } from "lucide-react";
+import { saveKnockoutPrediction, saveMatchPrediction } from "@/app/actions/predictions";
 import { GroupNav } from "@/components/group-nav";
+import { GroupTablePredictions } from "@/components/group-table-predictions";
 import { EmptyState } from "@/components/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getGroupContext } from "@/lib/data";
+import { flagForTeam } from "@/lib/team-flags";
 
 type MatchRow = {
   id: string;
@@ -35,6 +32,7 @@ type MatchRow = {
 type TeamOption = {
   id: string;
   name: string;
+  flag: string;
 };
 
 function settingsFor(group: { group_prediction_settings?: unknown }) {
@@ -69,10 +67,11 @@ export default async function PredictionsPage({
     knockout_opened_at: null,
     knockout_locked_at: null
   };
+  const tournament = Array.isArray(group.tournaments) ? group.tournaments[0] : group.tournaments;
+  const maxThirdPlaceAdvancers = tournament?.group_best_third_place_advancers ?? 0;
 
   const [
     { data: matches },
-    { data: teams },
     { data: tablePredictions },
     { data: matchPredictions },
     { data: knockoutPredictions }
@@ -84,13 +83,8 @@ export default async function PredictionsPage({
       .order("round_order", { ascending: true })
       .order("kickoff_time", { ascending: true, nullsFirst: false }),
     supabase
-      .from("teams")
-      .select("id,name")
-      .eq("tournament_id", group.tournament_id)
-      .order("name"),
-    supabase
       .from("group_table_predictions")
-      .select("group_name,ranked_team_ids,points")
+      .select("group_name,ranked_team_ids,third_place_advances,points")
       .eq("group_id", groupId)
       .eq("user_id", user.id),
     supabase
@@ -128,13 +122,35 @@ export default async function PredictionsPage({
     const groupName = match.group_name ?? "Group";
     const list = teamsByGroup.get(groupName) ?? [];
     for (const team of [
-      match.home_team_id ? { id: match.home_team_id, name: match.home_team_name } : null,
-      match.away_team_id ? { id: match.away_team_id, name: match.away_team_name } : null
+      match.home_team_id
+        ? {
+            id: match.home_team_id,
+            name: match.home_team_name,
+            flag: flagForTeam(match.home_team_name),
+          }
+        : null,
+      match.away_team_id
+        ? {
+            id: match.away_team_id,
+            name: match.away_team_name,
+            flag: flagForTeam(match.away_team_name),
+          }
+        : null
     ]) {
       if (team && !list.some((item) => item.id === team.id)) list.push(team);
     }
     teamsByGroup.set(groupName, list);
   }
+  const tableGroups = [...teamsByGroup.entries()].map(([groupName, teams]) => {
+    const prediction = tablePredictionByGroup.get(groupName);
+    return {
+      groupName,
+      teams,
+      rankedTeamIds: prediction?.ranked_team_ids ?? null,
+      thirdPlaceAdvances: prediction?.third_place_advances ?? false,
+      points: prediction?.points ?? null
+    };
+  });
 
   return (
     <main className="page-shell space-y-5">
@@ -157,12 +173,20 @@ export default async function PredictionsPage({
             </p>
           ) : null}
           {settings.group_stage_prediction_mode === "table" ? (
-            <GroupTableMode
-              groupId={groupId}
-              locked={groupLocked}
-              teamsByGroup={teamsByGroup}
-              predictionByGroup={tablePredictionByGroup}
-            />
+            tableGroups.length ? (
+              <GroupTablePredictions
+                groupId={groupId}
+                locked={groupLocked}
+                groups={tableGroups}
+                maxThirdPlaceAdvancers={maxThirdPlaceAdvancers}
+                showPoints={groupLocked}
+              />
+            ) : (
+              <EmptyState
+                title="Group fixtures are not loaded yet"
+                description="Run tournament sync after the fixture source has group-stage teams and groups. If you already synced, the source may not have published the final group draw yet."
+              />
+            )
           ) : settings.group_stage_prediction_mode === "match_outcome" ? (
             <MatchOutcomeMode
               groupId={groupId}
@@ -227,65 +251,6 @@ export default async function PredictionsPage({
         </CardContent>
       </Card>
     </main>
-  );
-}
-
-function GroupTableMode({
-  groupId,
-  locked,
-  teamsByGroup,
-  predictionByGroup
-}: {
-  groupId: string;
-  locked: boolean;
-  teamsByGroup: Map<string, TeamOption[]>;
-  predictionByGroup: Map<string, { ranked_team_ids: string[]; points: number }>;
-}) {
-  if (!teamsByGroup.size) {
-    return <EmptyState title="No groups yet" description="Run tournament sync to load group fixtures." />;
-  }
-
-  return (
-    <div className="grid gap-4 md:grid-cols-2">
-      {[...teamsByGroup.entries()].map(([groupName, teams]) => {
-        const prediction = predictionByGroup.get(groupName);
-        return (
-          <form key={groupName} action={saveGroupTablePrediction} className="space-y-3 rounded-3xl bg-muted p-4">
-            <input type="hidden" name="groupId" value={groupId} />
-            <input type="hidden" name="groupName" value={groupName} />
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-black">{groupName}</h2>
-              {prediction ? <Badge variant="outline">{prediction.points} pts</Badge> : null}
-            </div>
-            {teams.map((team, index) => (
-              <div key={`${groupName}-${index}`} className="space-y-1">
-                <Label>{index + 1}. place</Label>
-                <Select
-                  name="rankedTeamIds"
-                  defaultValue={prediction?.ranked_team_ids[index] ?? team.id}
-                  disabled={locked}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {teams.map((option) => (
-                      <SelectItem key={option.id} value={option.id}>
-                        {option.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            ))}
-            <Button type="submit" disabled={locked} className="w-full">
-              {locked ? <Lock className="h-4 w-4" /> : null}
-              Save table
-            </Button>
-          </form>
-        );
-      })}
-    </div>
   );
 }
 

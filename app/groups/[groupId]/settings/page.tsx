@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { getGroupContext } from "@/lib/data";
 
 export default async function SettingsPage({
@@ -144,7 +145,7 @@ export default async function SettingsPage({
                   defaultValue={group.payout_description ?? ""}
                 />
               </div>
-              <Button type="submit">Save settings</Button>
+              <SubmitButton idleText="Save settings" />
             </form>
           </CardContent>
         </Card>

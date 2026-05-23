@@ -17,6 +17,11 @@ export type SupportedTournament = {
   theme: TournamentTheme;
 };
 
+export type GroupStageAdvancement = {
+  directAdvancersPerGroup: number;
+  bestThirdPlaceAdvancers: number;
+};
+
 export type NormalizedMatch = {
   externalId: string;
   tournamentCode: string;
@@ -42,6 +47,7 @@ export type NormalizedMatch = {
 
 export type NormalizedTournamentData = {
   tournamentCode: string;
+  groupStageAdvancement: GroupStageAdvancement;
   matches: NormalizedMatch[];
 };
 

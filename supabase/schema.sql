@@ -25,6 +25,8 @@ create table public.tournaments (
   year int,
   source text not null,
   is_supported boolean not null default false,
+  group_direct_advancers int not null default 2,
+  group_best_third_place_advancers int not null default 0,
   theme jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now()
 );
@@ -135,6 +137,7 @@ create table public.group_table_predictions (
   user_id uuid not null references public.profiles(id) on delete cascade,
   group_name text not null,
   ranked_team_ids uuid[] not null,
+  third_place_advances boolean not null default false,
   points int not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -306,12 +309,26 @@ create policy "Users can write own unlocked table predictions" on public.group_t
 );
 
 create policy "Group members can read match predictions after lock or own" on public.match_predictions for select to authenticated using (
-  public.is_group_member(group_id) and (user_id = auth.uid() or not public.group_stage_unlocked(group_id))
+  public.is_group_member(group_id) and (
+    user_id = auth.uid()
+    or (prediction_phase = 'group' and not public.group_stage_unlocked(group_id))
+    or (prediction_phase = 'knockout' and not public.knockout_unlocked(group_id))
+  )
 );
 create policy "Users can write own unlocked match predictions" on public.match_predictions for all to authenticated using (
-  user_id = auth.uid() and public.is_group_member(group_id) and public.group_stage_unlocked(group_id)
+  user_id = auth.uid()
+  and public.is_group_member(group_id)
+  and (
+    (prediction_phase = 'group' and public.group_stage_unlocked(group_id))
+    or (prediction_phase = 'knockout' and public.knockout_unlocked(group_id))
+  )
 ) with check (
-  user_id = auth.uid() and public.is_group_member(group_id) and public.group_stage_unlocked(group_id)
+  user_id = auth.uid()
+  and public.is_group_member(group_id)
+  and (
+    (prediction_phase = 'group' and public.group_stage_unlocked(group_id))
+    or (prediction_phase = 'knockout' and public.knockout_unlocked(group_id))
+  )
 );
 
 create policy "Group members can read knockout predictions after lock or own" on public.knockout_prediction_entries for select to authenticated using (

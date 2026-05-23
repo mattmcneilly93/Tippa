@@ -27,6 +27,24 @@ describe("group table scoring", () => {
       calculateGroupTablePoints(["c", "d", "a", "b"], ["a", "b", "c", "d"], 2)
     ).toBe(0);
   });
+
+  it("supports best third-place advancement in table mode", () => {
+    expect(
+      calculateGroupTablePoints(["a", "b", "c", "d"], ["a", "b", "c", "d"], {
+        actualAdvancingTeamIds: ["a", "b", "c"],
+        predictedThirdPlaceAdvances: true
+      })
+    ).toBe(18);
+  });
+
+  it("penalizes missing an advancing third-place team", () => {
+    expect(
+      calculateGroupTablePoints(["a", "b", "c", "d"], ["a", "b", "c", "d"], {
+        actualAdvancingTeamIds: ["a", "b", "c"],
+        predictedThirdPlaceAdvances: false
+      })
+    ).toBe(17);
+  });
 });
 
 describe("match prediction scoring", () => {

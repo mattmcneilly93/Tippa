@@ -7,6 +7,7 @@ import {
   outcomeForScore,
   scoreSettingsFromRow,
   type MatchOutcome,
+  type RankedTeam,
   type RoundKey,
   type ScoreSettings
 } from "@/lib/scoring";
@@ -28,6 +29,16 @@ type SettingsRow = Partial<ScoreSettings> & {
   group_id: string;
 };
 
+type AdvancementRules = {
+  directAdvancersPerGroup: number;
+  bestThirdPlaceAdvancers: number;
+};
+
+const defaultAdvancementRules: AdvancementRules = {
+  directAdvancersPerGroup: 2,
+  bestThirdPlaceAdvancers: 0
+};
+
 function winnerTeamId(match: MatchRow) {
   if (
     match.status !== "finished" ||
@@ -42,7 +53,7 @@ function winnerTeamId(match: MatchRow) {
   return match.home_score > match.away_score ? match.home_team_id : match.away_team_id;
 }
 
-function groupStandings(matches: MatchRow[]) {
+function groupStandings(matches: MatchRow[]): RankedTeam[] {
   const table = new Map<string, { teamId: string; points: number; goalDifference: number; goalsFor: number }>();
 
   for (const match of matches) {
@@ -94,8 +105,7 @@ function groupStandings(matches: MatchRow[]) {
         b.goalDifference - a.goalDifference ||
         b.goalsFor - a.goalsFor ||
         a.teamId.localeCompare(b.teamId)
-    )
-    .map((row) => row.teamId);
+    );
 }
 
 function settingsByGroup(rows: SettingsRow[] | null | undefined) {
@@ -104,8 +114,17 @@ function settingsByGroup(rows: SettingsRow[] | null | undefined) {
 
 export async function recalculateScoresForTournament(tournamentId: string) {
   const supabase = createServiceClient();
-  const [{ data: matches, error: matchesError }, { data: settings, error: settingsError }] =
+  const [
+    { data: tournament, error: tournamentError },
+    { data: matches, error: matchesError },
+    { data: settings, error: settingsError }
+  ] =
     await Promise.all([
+      supabase
+        .from("tournaments")
+        .select("group_direct_advancers,group_best_third_place_advancers")
+        .eq("id", tournamentId)
+        .single(),
       supabase.from("matches").select("*").eq("tournament_id", tournamentId),
       supabase
         .from("group_prediction_settings")
@@ -113,17 +132,23 @@ export async function recalculateScoresForTournament(tournamentId: string) {
         .eq("groups.tournament_id", tournamentId)
     ]);
 
+  if (tournamentError) throw tournamentError;
   if (matchesError) throw matchesError;
   if (settingsError) throw settingsError;
 
-  await recalculateWithMatches(matches as MatchRow[], settings as unknown as SettingsRow[]);
+  await recalculateWithMatches(matches as MatchRow[], settings as unknown as SettingsRow[], {
+    directAdvancersPerGroup:
+      tournament.group_direct_advancers ?? defaultAdvancementRules.directAdvancersPerGroup,
+    bestThirdPlaceAdvancers:
+      tournament.group_best_third_place_advancers ?? defaultAdvancementRules.bestThirdPlaceAdvancers
+  });
 }
 
 export async function recalculateScoresForGroup(groupId: string) {
   const supabase = createServiceClient();
   const { data: group, error: groupError } = await supabase
     .from("groups")
-    .select("tournament_id")
+    .select("tournament_id,tournaments(group_direct_advancers,group_best_third_place_advancers)")
     .eq("id", groupId)
     .single();
 
@@ -138,10 +163,20 @@ export async function recalculateScoresForGroup(groupId: string) {
   if (matchesError) throw matchesError;
   if (settingsError) throw settingsError;
 
-  await recalculateWithMatches(matches as MatchRow[], settings as unknown as SettingsRow[]);
+  const tournament = Array.isArray(group.tournaments) ? group.tournaments[0] : group.tournaments;
+  await recalculateWithMatches(matches as MatchRow[], settings as unknown as SettingsRow[], {
+    directAdvancersPerGroup:
+      tournament?.group_direct_advancers ?? defaultAdvancementRules.directAdvancersPerGroup,
+    bestThirdPlaceAdvancers:
+      tournament?.group_best_third_place_advancers ?? defaultAdvancementRules.bestThirdPlaceAdvancers
+  });
 }
 
-async function recalculateWithMatches(matches: MatchRow[], settingsRows: SettingsRow[]) {
+async function recalculateWithMatches(
+  matches: MatchRow[],
+  settingsRows: SettingsRow[],
+  advancementRules: AdvancementRules
+) {
   const supabase = createServiceClient();
   const groupIds = settingsRows.map((row) => row.group_id);
   if (!groupIds.length) return;
@@ -150,21 +185,58 @@ async function recalculateWithMatches(matches: MatchRow[], settingsRows: Setting
 
   const { data: tablePredictions, error: tableError } = await supabase
     .from("group_table_predictions")
-    .select("id,group_id,group_name,ranked_team_ids")
+    .select("id,group_id,group_name,ranked_team_ids,third_place_advances")
     .in("group_id", groupIds);
   if (tableError) throw tableError;
 
-  for (const prediction of tablePredictions ?? []) {
-    const actual = groupStandings(
-      matches.filter(
-        (match) => match.stage_type === "group" && match.group_name === prediction.group_name
+  const standingsByGroup = new Map<string, ReturnType<typeof groupStandings>>();
+  for (const match of matches.filter((match) => match.stage_type === "group" && match.group_name)) {
+    if (!standingsByGroup.has(match.group_name as string)) {
+      standingsByGroup.set(
+        match.group_name as string,
+        groupStandings(
+          matches.filter(
+            (groupMatch) => groupMatch.stage_type === "group" && groupMatch.group_name === match.group_name
+          )
+        )
+      );
+    }
+  }
+
+  const bestThirdPlaceTeamIds = new Set(
+    [...standingsByGroup.values()]
+      .map((standing) => standing[2])
+      .filter((team): team is RankedTeam => Boolean(team))
+      .sort(
+        (a, b) =>
+          b.points - a.points ||
+          b.goalDifference - a.goalDifference ||
+          b.goalsFor - a.goalsFor ||
+          a.teamId.localeCompare(b.teamId)
       )
-    );
+      .slice(0, advancementRules.bestThirdPlaceAdvancers)
+      .map((team) => team.teamId)
+  );
+
+  for (const prediction of tablePredictions ?? []) {
+    const actualStanding = standingsByGroup.get(prediction.group_name) ?? [];
+    const actual = actualStanding.map((team) => team.teamId);
+    const actualAdvancingTeamIds = [
+      ...actual.slice(0, advancementRules.directAdvancersPerGroup),
+      ...(actual[advancementRules.directAdvancersPerGroup] &&
+      bestThirdPlaceTeamIds.has(actual[advancementRules.directAdvancersPerGroup])
+        ? [actual[advancementRules.directAdvancersPerGroup]]
+        : [])
+    ];
     const points = actual.length
       ? calculateGroupTablePoints(
           prediction.ranked_team_ids,
           actual,
-          Math.min(2, actual.length),
+          {
+            actualAdvancingTeamIds,
+            directAdvancersPerGroup: advancementRules.directAdvancersPerGroup,
+            predictedThirdPlaceAdvances: prediction.third_place_advances
+          },
           settingsMap.get(prediction.group_id)
         )
       : 0;

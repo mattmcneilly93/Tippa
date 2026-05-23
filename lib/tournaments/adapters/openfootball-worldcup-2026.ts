@@ -33,9 +33,8 @@ function normalizeKickoff(date?: string, time?: string) {
   const [, hour, minute, offset] = match;
   const offsetNumber = Number(offset);
   const utcHour = Number(hour) - offsetNumber;
-  const kickoff = new Date(Date.UTC(2026, 0, 1));
   const [year, month, day] = date.split("-").map(Number);
-  kickoff.setUTCFullYear(year, month - 1, day);
+  const kickoff = new Date(Date.UTC(year, month - 1, day));
   kickoff.setUTCHours(utcHour, Number(minute), 0, 0);
   return kickoff.toISOString();
 }
@@ -43,6 +42,11 @@ function normalizeKickoff(date?: string, time?: string) {
 function statusFor(match: OpenFootballMatch): NormalizedMatch["status"] {
   if (match.score?.ft) return "finished";
   return "scheduled";
+}
+
+function isPlaceholderTeam(name?: string) {
+  if (!name) return true;
+  return /^(?:\d+[A-Z](?:\/[A-Z])?|[WL]\d+)$/i.test(name);
 }
 
 function classifyRound(match: OpenFootballMatch): Pick<NormalizedMatch, "stageType" | "roundKey" | "roundOrder"> {
@@ -109,8 +113,8 @@ export const openFootballWorldCup2026Adapter: TournamentAdapter = {
         stage: match.round ?? "Fixture",
         groupName: match.group,
         ...round,
-        homeTeamName: match.team1 ?? "TBD",
-        awayTeamName: match.team2 ?? "TBD",
+        homeTeamName: isPlaceholderTeam(match.team1) ? "TBD" : match.team1 ?? "TBD",
+        awayTeamName: isPlaceholderTeam(match.team2) ? "TBD" : match.team2 ?? "TBD",
         kickoffTime: normalizeKickoff(match.date, match.time),
         homeScore: score[0],
         awayScore: score[1],
@@ -120,6 +124,10 @@ export const openFootballWorldCup2026Adapter: TournamentAdapter = {
 
     return {
       tournamentCode: "world-cup-2026",
+      groupStageAdvancement: {
+        directAdvancersPerGroup: 2,
+        bestThirdPlaceAdvancers: 8
+      },
       matches
     };
   }

@@ -12,10 +12,13 @@ import {
   type RoundKey
 } from "@/lib/scoring";
 
+type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
+
 const tableSchema = z.object({
   groupId: z.string().uuid(),
   groupName: z.string().min(1),
-  rankedTeamIds: z.array(z.string().uuid()).min(2)
+  rankedTeamIds: z.array(z.string().uuid()).min(2),
+  thirdPlaceAdvances: z.coerce.boolean().default(false)
 });
 
 const matchSchema = z.object({
@@ -44,19 +47,25 @@ async function requireUser() {
   return { supabase, user };
 }
 
-async function assertGroupStageUnlocked(supabase: Awaited<ReturnType<typeof createClient>>, groupId: string) {
+async function getGroupTournament(supabase: SupabaseClient, groupId: string) {
   const { data: group, error } = await supabase
     .from("groups")
-    .select("tournament_id")
+    .select("tournament_id,tournaments(group_best_third_place_advancers)")
     .eq("id", groupId)
     .single();
 
   if (error) throw error;
+  const tournament = Array.isArray(group.tournaments) ? group.tournaments[0] : group.tournaments;
+  return { tournamentId: group.tournament_id as string, tournament };
+}
+
+async function assertGroupStageUnlocked(supabase: SupabaseClient, groupId: string) {
+  const { tournamentId } = await getGroupTournament(supabase, groupId);
 
   const { data: firstMatch, error: matchError } = await supabase
     .from("matches")
     .select("kickoff_time")
-    .eq("tournament_id", group.tournament_id)
+    .eq("tournament_id", tournamentId)
     .eq("stage_type", "group")
     .order("kickoff_time", { ascending: true, nullsFirst: false })
     .limit(1)
@@ -68,7 +77,12 @@ async function assertGroupStageUnlocked(supabase: Awaited<ReturnType<typeof crea
   }
 }
 
-async function assertKnockoutUnlocked(supabase: Awaited<ReturnType<typeof createClient>>, groupId: string) {
+async function getThirdPlaceAdvancerLimit(supabase: SupabaseClient, groupId: string) {
+  const { tournament } = await getGroupTournament(supabase, groupId);
+  return tournament?.group_best_third_place_advancers ?? 0;
+}
+
+async function assertKnockoutUnlocked(supabase: SupabaseClient, groupId: string) {
   const { data: settings, error } = await supabase
     .from("group_prediction_settings")
     .select("knockout_opened_at,knockout_locked_at")
@@ -82,22 +96,71 @@ async function assertKnockoutUnlocked(supabase: Awaited<ReturnType<typeof create
   }
 }
 
+async function assertTablePredictionShape(
+  supabase: SupabaseClient,
+  tournamentId: string,
+  groupName: string,
+  rankedTeamIds: string[]
+) {
+  const { data: matches, error } = await supabase
+    .from("matches")
+    .select("home_team_id,away_team_id")
+    .eq("tournament_id", tournamentId)
+    .eq("stage_type", "group")
+    .eq("group_name", groupName);
+
+  if (error) throw error;
+  const validTeamIds = new Set(
+    (matches ?? [])
+      .flatMap((match) => [match.home_team_id, match.away_team_id])
+      .filter((teamId): teamId is string => Boolean(teamId))
+  );
+
+  if (!validTeamIds.size) throw new Error("Unknown group.");
+  if (rankedTeamIds.length !== validTeamIds.size) throw new Error("Prediction must rank every team in the group.");
+  if (new Set(rankedTeamIds).size !== rankedTeamIds.length) throw new Error("Prediction cannot include duplicate teams.");
+  if (!rankedTeamIds.every((teamId) => validTeamIds.has(teamId))) {
+    throw new Error("Prediction includes a team outside this group.");
+  }
+}
+
 export async function saveGroupTablePrediction(formData: FormData) {
   const rankedTeamIds = formData.getAll("rankedTeamIds").map(String).filter(Boolean);
   const parsed = tableSchema.parse({
     groupId: formData.get("groupId"),
     groupName: formData.get("groupName"),
-    rankedTeamIds
+    rankedTeamIds,
+    thirdPlaceAdvances: formData.get("thirdPlaceAdvances") === "true"
   });
   const { supabase, user } = await requireUser();
+  const { tournamentId } = await getGroupTournament(supabase, parsed.groupId);
   await assertGroupStageUnlocked(supabase, parsed.groupId);
+  await assertTablePredictionShape(supabase, tournamentId, parsed.groupName, parsed.rankedTeamIds);
+
+  const thirdPlaceAdvancerLimit = await getThirdPlaceAdvancerLimit(supabase, parsed.groupId);
+
+  if (parsed.thirdPlaceAdvances) {
+    const { count, error: countError } = await supabase
+      .from("group_table_predictions")
+      .select("id", { count: "exact", head: true })
+      .eq("group_id", parsed.groupId)
+      .eq("user_id", user.id)
+      .eq("third_place_advances", true)
+      .neq("group_name", parsed.groupName);
+
+    if (countError) throw countError;
+    if ((count ?? 0) >= thirdPlaceAdvancerLimit) {
+      throw new Error(`Only ${thirdPlaceAdvancerLimit} third-place teams can advance.`);
+    }
+  }
 
   const { error } = await supabase.from("group_table_predictions").upsert(
     {
       group_id: parsed.groupId,
       user_id: user.id,
       group_name: parsed.groupName,
-      ranked_team_ids: parsed.rankedTeamIds
+      ranked_team_ids: parsed.rankedTeamIds,
+      third_place_advances: parsed.thirdPlaceAdvances
     },
     { onConflict: "group_id,user_id,group_name" }
   );
@@ -116,6 +179,7 @@ export async function saveMatchPrediction(formData: FormData) {
     awayScore: formData.get("awayScore") || undefined
   });
   const { supabase, user } = await requireUser();
+  const { tournamentId } = await getGroupTournament(supabase, parsed.groupId);
   if (parsed.predictionPhase === "knockout") {
     await assertKnockoutUnlocked(supabase, parsed.groupId);
   } else {
@@ -124,11 +188,13 @@ export async function saveMatchPrediction(formData: FormData) {
 
   const { data: match, error: matchError } = await supabase
     .from("matches")
-    .select("status,home_score,away_score")
+    .select("tournament_id,stage_type,status,home_score,away_score")
     .eq("id", parsed.matchId)
     .single();
 
   if (matchError) throw matchError;
+  if (match.tournament_id !== tournamentId) throw new Error("Match does not belong to this group tournament.");
+  if (match.stage_type !== parsed.predictionPhase) throw new Error("Prediction phase does not match this fixture.");
 
   const exactResult =
     parsed.homeScore != null && parsed.awayScore != null
@@ -176,7 +242,24 @@ export async function saveKnockoutPrediction(formData: FormData) {
     predictedTeamId: formData.get("predictedTeamId")
   });
   const { supabase, user } = await requireUser();
+  const { tournamentId } = await getGroupTournament(supabase, parsed.groupId);
   await assertKnockoutUnlocked(supabase, parsed.groupId);
+
+  if (!parsed.sourceMatchId) throw new Error("Knockout predictions must be tied to a fixture.");
+
+  const { data: match, error: matchError } = await supabase
+    .from("matches")
+    .select("tournament_id,stage_type,round_key,home_team_id,away_team_id")
+    .eq("id", parsed.sourceMatchId)
+    .single();
+
+  if (matchError) throw matchError;
+  if (match.tournament_id !== tournamentId) throw new Error("Match does not belong to this group tournament.");
+  if (match.stage_type !== "knockout") throw new Error("Winner pick must be for a knockout fixture.");
+  if (match.round_key !== parsed.roundKey) throw new Error("Winner pick round does not match the fixture.");
+  if (![match.home_team_id, match.away_team_id].includes(parsed.predictedTeamId)) {
+    throw new Error("Winner pick must be one of the fixture teams.");
+  }
 
   const { error } = await supabase.from("knockout_prediction_entries").upsert(
     {

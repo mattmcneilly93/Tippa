@@ -6,11 +6,11 @@ import {
   syncTournamentForGroup
 } from "@/app/actions/admin";
 import { GroupNav } from "@/components/group-nav";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { getGroupContext } from "@/lib/data";
 
 export default async function AdminPage({ params }: { params: Promise<{ groupId: string }> }) {
@@ -79,15 +79,21 @@ export default async function AdminPage({ params }: { params: Promise<{ groupId:
           </div>
           <form action={openKnockoutPredictions}>
             <input type="hidden" name="groupId" value={groupId} />
-            <Button type="submit" disabled={!firstKnockout || Boolean(predictionSettings?.knockout_opened_at)}>
-              Open knockout predictions
-            </Button>
+            <SubmitButton
+              idleText="Open knockout predictions"
+              pendingText="Opening..."
+              successText="Opened"
+              disabled={!firstKnockout || Boolean(predictionSettings?.knockout_opened_at)}
+            />
           </form>
           <form action={recalculateGroupPredictionScores}>
             <input type="hidden" name="groupId" value={groupId} />
-            <Button type="submit" variant="outline">
-              Recalculate scores
-            </Button>
+            <SubmitButton
+              idleText="Recalculate scores"
+              pendingText="Recalculating..."
+              successText="Recalculated"
+              variant="outline"
+            />
           </form>
         </CardContent>
       </Card>
@@ -101,7 +107,7 @@ export default async function AdminPage({ params }: { params: Promise<{ groupId:
           </p>
           <form action={syncTournamentForGroup}>
             <input type="hidden" name="groupId" value={groupId} />
-            <Button type="submit">Sync now</Button>
+            <SubmitButton idleText="Sync now" pendingText="Syncing..." successText="Synced" />
           </form>
         </CardContent>
       </Card>
@@ -158,9 +164,13 @@ export default async function AdminPage({ params }: { params: Promise<{ groupId:
                     <SelectItem value="cancelled">Cancelled</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button type="submit" size="sm" className="mt-2 w-full">
-                  Save
-                </Button>
+                <SubmitButton
+                  idleText="Save"
+                  pendingText="Saving..."
+                  successText="Saved"
+                  size="sm"
+                  className="mt-2 w-full"
+                />
               </div>
             </form>
           ))}

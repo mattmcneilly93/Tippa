@@ -167,11 +167,29 @@ export type RankedTeam = {
 export function calculateGroupTablePoints(
   predictedTeamIds: string[],
   actualRankedTeamIds: string[],
-  advancingCount: number,
+  advancing:
+    | number
+    | {
+        actualAdvancingTeamIds: string[];
+        directAdvancersPerGroup?: number;
+        predictedThirdPlaceAdvances?: boolean;
+      },
   settings: ScoreSettings = defaultScoreSettings
 ) {
-  const actualAdvancing = new Set(actualRankedTeamIds.slice(0, advancingCount));
-  const predictedAdvancing = new Set(predictedTeamIds.slice(0, advancingCount));
+  const actualAdvancing =
+    typeof advancing === "number"
+      ? new Set(actualRankedTeamIds.slice(0, advancing))
+      : new Set(advancing.actualAdvancingTeamIds);
+  const predictedAdvancing =
+    typeof advancing === "number"
+      ? new Set(predictedTeamIds.slice(0, advancing))
+      : new Set([
+          ...predictedTeamIds.slice(0, advancing.directAdvancersPerGroup ?? 2),
+          ...(advancing.predictedThirdPlaceAdvances &&
+          predictedTeamIds[advancing.directAdvancersPerGroup ?? 2]
+            ? [predictedTeamIds[advancing.directAdvancersPerGroup ?? 2]]
+            : [])
+        ]);
 
   return predictedTeamIds.reduce((sum, teamId, index) => {
     const actualIndex = actualRankedTeamIds.indexOf(teamId);

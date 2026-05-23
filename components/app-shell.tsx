@@ -4,6 +4,7 @@ import { getUser } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import { signOut } from "@/app/actions/auth";
+import Image from "next/image";
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const user = await getUser();
@@ -14,9 +15,13 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-30 border-b bg-[#fffaf0]/85 backdrop-blur">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-3">
           <Link href={user ? "/dashboard" : "/"} className="flex items-center gap-2">
-            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
-              <Trophy className="h-5 w-5" />
-            </span>
+            <Image
+              src="/icons/logo_transparent.webp"
+              alt="Tippa logo"
+              height={192}
+              width={192}
+              className="h-10 w-10 bg-transparent"
+            />
             <span className="text-xl font-black">Tippa</span>
           </Link>
           <nav className="flex items-center gap-2">

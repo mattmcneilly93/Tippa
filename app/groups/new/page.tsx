@@ -11,18 +11,18 @@ export default function NewGroupPage() {
     <main className="page-shell">
       <Card className="mx-auto max-w-2xl">
         <CardHeader className="poster-pattern">
-          <CardTitle className="text-3xl">Create a family pool</CardTitle>
+          <CardTitle className="text-3xl">Create a private pool</CardTitle>
         </CardHeader>
         <CardContent>
           <form action={createGroup} className="space-y-5">
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="name">Group name</Label>
-                <Input id="name" name="name" placeholder="The Hansen Cup" required />
+                <Input id="name" name="name" placeholder="The Friday Crew Cup" required />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="inviteCode">Invite code</Label>
-                <Input id="inviteCode" name="inviteCode" placeholder="HANSEN-2026" required />
+                <Input id="inviteCode" name="inviteCode" placeholder="CREW-2026" required />
               </div>
             </div>
             <div className="space-y-2">

@@ -7,7 +7,7 @@ export const metadata: Metadata = {
     default: "Tippa",
     template: "%s | Tippa"
   },
-  description: "A private family football tournament prediction game.",
+  description: "Private football prediction pools for friends, families, and teams.",
   applicationName: "Tippa",
   manifest: "/manifest.webmanifest",
   appleWebApp: {

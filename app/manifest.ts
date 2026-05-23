@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Tippa",
     short_name: "Tippa",
-    description: "A private family football tournament prediction game.",
+    description: "Private football prediction pools for friends, families, and teams.",
     start_url: "/dashboard",
     display: "standalone",
     background_color: "#F7F3EA",

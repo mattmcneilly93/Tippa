@@ -1,6 +1,6 @@
 # Tippa
 
-Tippa is a private football prediction pool app built with Next.js, Supabase, and Vercel. It lets a small group create a tournament pool, invite members with a code, submit score predictions, track points, and optionally configure prizes.
+Tippa is a private football prediction pool app built with Next.js, Supabase, and Vercel. It lets friends, families, teams, and other small groups create a tournament pool, invite members with a code, submit score predictions, track points, and optionally configure prizes.
 
 The current tournament adapter targets the 2026 World Cup data from the openfootball JSON repository. Tournament data can be synced by cron or manually from a group admin page.
 

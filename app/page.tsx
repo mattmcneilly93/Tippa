@@ -12,19 +12,19 @@ export default function HomePage() {
       <section className="grid min-h-[calc(100vh-5rem)] items-center gap-8 py-8 md:grid-cols-[1.05fr_0.95fr]">
         <div className="space-y-6">
           <div className="inline-flex rounded-full bg-[#fff4d6] px-4 py-2 text-sm font-bold">
-            Family football pools without the fuss
+            Football pools for your private circle
           </div>
           <h1 className="max-w-2xl text-6xl font-black leading-[0.92] tracking-normal md:text-8xl">
             Tippa
           </h1>
           <p className="max-w-xl text-xl text-muted-foreground">
-            Make a private World Cup prediction game for the family, share a code,
-            and watch the table move after every result.
+            Make a private World Cup prediction game for friends, families, or teams,
+            share a code, and watch the table move after every result.
           </p>
           <div className="flex flex-col gap-3 sm:flex-row">
             <Button asChild size="lg">
               <Link href="/groups/new">
-                Create a family pool <ArrowRight className="h-5 w-5" />
+                Create a pool <ArrowRight className="h-5 w-5" />
               </Link>
             </Button>
             <Button asChild variant="outline" size="lg">

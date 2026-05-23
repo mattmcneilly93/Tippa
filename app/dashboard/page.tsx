@@ -67,7 +67,7 @@ export default async function DashboardPage() {
           <form action={joinGroup} className="flex flex-col gap-3 sm:flex-row">
             <div className="flex-1 space-y-2">
               <Label htmlFor="inviteCode">Invite code</Label>
-              <Input id="inviteCode" name="inviteCode" placeholder="FAMILY-2026" required />
+              <Input id="inviteCode" name="inviteCode" placeholder="CREW-2026" required />
             </div>
             <Button className="self-end" type="submit">
               Join
@@ -107,10 +107,10 @@ export default async function DashboardPage() {
       ) : (
         <EmptyState
           title="No groups yet"
-          description="Create a family pool or join one with an invite code."
+          description="Create a private pool or join one with an invite code."
           action={
             <Button asChild>
-              <Link href="/groups/new">Create a family pool</Link>
+              <Link href="/groups/new">Create a pool</Link>
             </Button>
           }
         />

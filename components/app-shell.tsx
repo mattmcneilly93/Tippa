@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Trophy } from "lucide-react";
 import { getUser } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
+import { PullToRefresh } from "@/components/pull-to-refresh";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import { signOut } from "@/app/actions/auth";
 import Image from "next/image";
@@ -12,6 +13,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <>
       <ServiceWorkerRegister />
+      <PullToRefresh />
       <header className="sticky top-0 z-30 border-b bg-[#fffaf0]/85 backdrop-blur">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-3">
           <Link href={user ? "/dashboard" : "/"} className="flex items-center gap-2">

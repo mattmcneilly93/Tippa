@@ -1,20 +1,57 @@
-# Tippa
+<div align="center">
+  <h1>
+    <span style="font-size: 3rem;">Tippa</span>
+  </h1>
+  <p>
+    <strong>Private football prediction pools for friends, families, and teams.</strong>
+  </p>
+  <p>
+    Rank group tables, fill knockout brackets, track leaderboards, and keep the pool private with invite codes.
+  </p>
+  <p>
+    <img alt="Next.js" src="https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=nextdotjs" />
+    <img alt="Supabase" src="https://img.shields.io/badge/Supabase-Postgres-3FCF8E?style=for-the-badge&logo=supabase&logoColor=white" />
+    <img alt="Vercel" src="https://img.shields.io/badge/Vercel-ready-black?style=for-the-badge&logo=vercel" />
+    <img alt="License" src="https://img.shields.io/badge/license-MIT-f7c948?style=for-the-badge" />
+  </p>
+</div>
 
-Tippa is a private football prediction pool app built with Next.js, Supabase, and Vercel. It lets friends, families, teams, and other small groups create a tournament pool, invite members with a code, submit score predictions, track points, and optionally configure prizes.
+## What It Does
 
-The current tournament adapter targets the 2026 World Cup data from the openfootball JSON repository. Tournament data can be synced by cron or manually from a group admin page.
+Tippa is a tournament prediction pool app built with Next.js, Supabase, and Vercel. A group admin creates a private pool, picks the prediction format, shares an invite code, and members submit predictions before each phase locks.
+
+The default game is intentionally simple:
+
+- Group stage: rank each group table.
+- Knockout stage: pick winners in the bracket after group play is done.
+- Leaderboard: group-stage points + knockout points = total score.
+
+Groups can also choose easier or harder formats:
+
+- Rank final group tables.
+- Pick group-stage match winners.
+- Predict exact group-stage scores.
+- Pick knockout winners in a full bracket.
+- Optionally include the third-place match.
+- Use scoring presets or custom point values.
+
+The current tournament adapter targets the 2026 World Cup data from the openfootball JSON repository. Tournament data can be synced by cron, script, or manually from the group admin page.
 
 ## Features
 
 - Google, Apple, and email magic-link login through Supabase Auth
 - Private groups with invite codes
-- Prediction entry per match
-- Leaderboard scoring
+- Configurable prediction modes per group
+- Group-stage lock at first tournament kickoff
+- Admin-opened knockout prediction phase
+- Full knockout winner bracket
+- Configurable scoring presets plus advanced custom scoring
+- Leaderboard breakdown for group-stage and knockout points
 - Configurable prize modes: none, sponsored, buy-in, or hybrid
 - Group-specific manual result overrides
-- Admin-only manual tournament sync
-- Daily Vercel cron sync support
-- Offline/PWA basics
+- Admin-only manual tournament sync and score recalculation
+- Daily Vercel Cron sync support
+- Offline/PWA shell basics
 
 ## Stack
 
@@ -81,9 +118,20 @@ For Google and Apple OAuth, the provider callback URL registered in Google/Apple
 https://YOUR_SUPABASE_PROJECT_REF.supabase.co/auth/v1/callback
 ```
 
+### Database Reset Note
+
+The prediction system uses mode-specific tables:
+
+- `group_prediction_settings`
+- `group_table_predictions`
+- `match_predictions`
+- `knockout_prediction_entries`
+
+If you are upgrading from an older Tippa version, reset/recreate the Supabase database with the current `supabase/schema.sql`. Existing prediction data is not migration-compatible.
+
 ## Environment Variables
 
-`NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` are safe to expose to the browser. Supabase Row Level Security policies are what protect user data.
+`NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` are safe to expose to the browser. Supabase Row Level Security policies protect user data.
 
 Keep these secret:
 
@@ -101,6 +149,7 @@ Manual sync:
 - Log in as a group admin.
 - Open the group admin page.
 - Click **Sync now**.
+- Click **Recalculate scores** if you changed overrides or scoring.
 
 Script sync:
 
@@ -127,6 +176,16 @@ Vercel Hobby cron is limited to once per day. For more frequent automated syncs,
 ```txt
 Authorization: Bearer <CRON_SECRET>
 ```
+
+## Prediction Flow
+
+1. Admin creates a group and chooses the group-stage prediction mode.
+2. Members submit group-stage predictions.
+3. Group-stage predictions lock at the first group-stage kickoff.
+4. Admin syncs tournament data after group play when knockout fixtures are known.
+5. Admin opens knockout predictions.
+6. Members pick knockout winners before the first knockout kickoff.
+7. Scores are recalculated after match results are synced or overridden.
 
 ## Deployment
 

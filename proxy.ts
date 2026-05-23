@@ -8,6 +8,10 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(callbackUrl);
   }
 
+  if (request.nextUrl.pathname === "/auth/callback") {
+    return NextResponse.next();
+  }
+
   return updateSession(request);
 }
 

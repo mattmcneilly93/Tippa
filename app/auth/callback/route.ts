@@ -10,7 +10,11 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (error) {
-      return NextResponse.redirect(new URL("/login?error=auth", requestUrl.origin));
+      console.error("Auth callback exchange failed", error);
+      const redirectUrl = new URL("/login", requestUrl.origin);
+      redirectUrl.searchParams.set("error", "auth");
+      redirectUrl.searchParams.set("reason", error.code ?? error.name ?? "exchange-failed");
+      return NextResponse.redirect(redirectUrl);
     }
   } else {
     return NextResponse.redirect(new URL("/login?error=missing-code", requestUrl.origin));

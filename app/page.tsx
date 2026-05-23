@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowRight, Users, Trophy, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { InstallAppButton } from "@/components/install-app-button";
 import { motion } from "@/components/motion";
 
 export default function HomePage() {
@@ -31,6 +32,7 @@ export default function HomePage() {
               <Link href="/dashboard">Join with code</Link>
             </Button>
           </div>
+          <InstallAppButton />
         </div>
         <div className="grid gap-4">
           {[

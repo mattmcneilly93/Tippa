@@ -5,11 +5,13 @@ type Member = {
   profiles: { display_name: string } | { display_name: string }[] | null;
 };
 
-type Prediction = {
+type PointRow = {
   user_id: string;
   points: number;
-  exact_score: boolean;
-  correct_outcome: boolean;
+};
+
+type KnockoutPointRow = PointRow & {
+  round_key: string;
 };
 
 function displayName(profile: Member["profiles"]) {
@@ -17,28 +19,49 @@ function displayName(profile: Member["profiles"]) {
   return profile?.display_name ?? "Player";
 }
 
+function sumPoints(rows: PointRow[], userId: string) {
+  return rows
+    .filter((row) => row.user_id === userId)
+    .reduce((sum, row) => sum + (row.points ?? 0), 0);
+}
+
 export function buildLeaderboard({
   members,
-  predictions,
-  totalMatches
+  tablePredictions,
+  matchPredictions,
+  knockoutPredictions
 }: {
   members: Member[];
-  predictions: Prediction[];
-  totalMatches: number;
+  tablePredictions: PointRow[];
+  matchPredictions: PointRow[];
+  knockoutPredictions: KnockoutPointRow[];
 }): LeaderboardRow[] {
   return members
     .map((member) => {
-      const userPredictions = predictions.filter(
-        (prediction) => prediction.user_id === member.user_id
-      );
+      const groupStagePoints =
+        sumPoints(tablePredictions, member.user_id) + sumPoints(matchPredictions, member.user_id);
+      const knockoutPoints = sumPoints(knockoutPredictions, member.user_id);
+      const championCorrect = knockoutPredictions.filter(
+        (prediction) =>
+          prediction.user_id === member.user_id &&
+          prediction.round_key === "final" &&
+          prediction.points > 0
+      ).length;
+
       return {
         userId: member.user_id,
         displayName: displayName(member.profiles),
-        points: userPredictions.reduce((sum, prediction) => sum + prediction.points, 0),
-        exactScores: userPredictions.filter((prediction) => prediction.exact_score).length,
-        correctOutcomes: userPredictions.filter((prediction) => prediction.correct_outcome).length,
-        remainingPredictions: Math.max(totalMatches - userPredictions.length, 0)
+        groupStagePoints,
+        knockoutPoints,
+        championCorrect,
+        points: groupStagePoints + knockoutPoints
       };
     })
-    .sort((a, b) => b.points - a.points || b.exactScores - a.exactScores);
+    .sort(
+      (a, b) =>
+        b.points - a.points ||
+        b.knockoutPoints - a.knockoutPoints ||
+        b.championCorrect - a.championCorrect ||
+        a.displayName.localeCompare(b.displayName)
+    );
 }

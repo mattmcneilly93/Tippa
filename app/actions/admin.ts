@@ -97,3 +97,59 @@ export async function syncTournamentForGroup(formData: FormData) {
   revalidatePath(`/groups/${parsed.groupId}/predictions`);
   revalidatePath(`/groups/${parsed.groupId}/admin`);
 }
+
+export async function openKnockoutPredictions(formData: FormData) {
+  const parsed = syncSchema.parse({
+    groupId: formData.get("groupId")
+  });
+
+  const { supabase } = await requireGroupAdmin(parsed.groupId);
+  const { data: group, error: groupError } = await supabase
+    .from("groups")
+    .select("tournament_id")
+    .eq("id", parsed.groupId)
+    .single();
+
+  if (groupError) throw groupError;
+
+  const { data: firstKnockout, error: matchError } = await supabase
+    .from("matches")
+    .select("kickoff_time")
+    .eq("tournament_id", group.tournament_id)
+    .eq("stage_type", "knockout")
+    .neq("home_team_name", "TBD")
+    .neq("away_team_name", "TBD")
+    .order("round_order", { ascending: true })
+    .order("kickoff_time", { ascending: true, nullsFirst: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (matchError) throw matchError;
+  if (!firstKnockout) throw new Error("No known knockout fixtures are available yet.");
+
+  const { error } = await supabase
+    .from("group_prediction_settings")
+    .update({
+      knockout_opened_at: new Date().toISOString(),
+      knockout_locked_at: firstKnockout.kickoff_time
+    })
+    .eq("group_id", parsed.groupId);
+
+  if (error) throw error;
+  revalidatePath(`/groups/${parsed.groupId}`);
+  revalidatePath(`/groups/${parsed.groupId}/predictions`);
+  revalidatePath(`/groups/${parsed.groupId}/admin`);
+}
+
+export async function recalculateGroupPredictionScores(formData: FormData) {
+  const parsed = syncSchema.parse({
+    groupId: formData.get("groupId")
+  });
+
+  await requireGroupAdmin(parsed.groupId);
+  await recalculateScoresForGroup(parsed.groupId);
+  revalidatePath(`/groups/${parsed.groupId}`);
+  revalidatePath(`/groups/${parsed.groupId}/leaderboard`);
+  revalidatePath(`/groups/${parsed.groupId}/predictions`);
+  revalidatePath(`/groups/${parsed.groupId}/admin`);
+}

@@ -1,7 +1,7 @@
 "use client";
 
 import { Lock, Save } from "lucide-react";
-import { savePrediction } from "@/app/actions/predictions";
+import { saveMatchPrediction } from "@/app/actions/predictions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { motion } from "@/components/motion";
@@ -19,7 +19,7 @@ export function PredictionInput({
 }) {
   return (
     <motion.form
-      action={savePrediction}
+      action={saveMatchPrediction}
       className="flex items-center gap-2"
       animate={{ opacity: locked ? 0.65 : 1 }}
     >

@@ -22,12 +22,22 @@ export type NormalizedMatch = {
   tournamentCode: string;
   stage: string;
   groupName?: string;
+  stageType: "group" | "knockout";
+  roundKey:
+    | "group"
+    | "round_of_32"
+    | "round_of_16"
+    | "quarter_final"
+    | "semi_final"
+    | "third_place"
+    | "final";
+  roundOrder: number;
   homeTeamName: string;
   awayTeamName: string;
   kickoffTime: string | null;
   homeScore: number | null;
   awayScore: number | null;
-  status: "scheduled" | "live" | "finished" | "postponed";
+  status: "scheduled" | "live" | "finished" | "postponed" | "cancelled";
 };
 
 export type NormalizedTournamentData = {

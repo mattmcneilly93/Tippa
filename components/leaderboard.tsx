@@ -8,9 +8,9 @@ export type LeaderboardRow = {
   userId: string;
   displayName: string;
   points: number;
-  exactScores: number;
-  correctOutcomes: number;
-  remainingPredictions: number;
+  groupStagePoints: number;
+  knockoutPoints: number;
+  championCorrect: number;
 };
 
 export function Leaderboard({ rows }: { rows: LeaderboardRow[] }) {
@@ -26,8 +26,7 @@ export function Leaderboard({ rows }: { rows: LeaderboardRow[] }) {
               <div className="min-w-0 flex-1">
                 <p className="truncate font-black">{row.displayName}</p>
                 <p className="text-xs text-muted-foreground">
-                  {row.exactScores} exact · {row.correctOutcomes} outcomes ·{" "}
-                  {row.remainingPredictions} left
+                  Group {row.groupStagePoints} · Knockout {row.knockoutPoints}
                 </p>
               </div>
               <p className="text-2xl font-black">{row.points}</p>

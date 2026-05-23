@@ -1,5 +1,10 @@
 import { redirect } from "next/navigation";
-import { saveMatchOverride, syncTournamentForGroup } from "@/app/actions/admin";
+import {
+  openKnockoutPredictions,
+  recalculateGroupPredictionScores,
+  saveMatchOverride,
+  syncTournamentForGroup
+} from "@/app/actions/admin";
 import { GroupNav } from "@/components/group-nav";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,18 +17,80 @@ export default async function AdminPage({ params }: { params: Promise<{ groupId:
   const { groupId } = await params;
   const { supabase, group, isAdmin } = await getGroupContext(groupId);
   if (!isAdmin) redirect(`/groups/${groupId}`);
+  const predictionSettings = Array.isArray(group.group_prediction_settings)
+    ? group.group_prediction_settings[0]
+    : group.group_prediction_settings;
 
-  const { data: matches } = await supabase
-    .from("matches")
-    .select("id,stage,home_team_name,away_team_name,kickoff_time,status,home_score,away_score")
-    .eq("tournament_id", group.tournament_id)
-    .order("kickoff_time", { ascending: true, nullsFirst: false })
-    .limit(24);
+  const [{ data: matches }, { data: firstGroup }, { data: firstKnockout }] = await Promise.all([
+    supabase
+      .from("matches")
+      .select("id,stage,home_team_name,away_team_name,kickoff_time,status,home_score,away_score")
+      .eq("tournament_id", group.tournament_id)
+      .order("kickoff_time", { ascending: true, nullsFirst: false })
+      .limit(24),
+    supabase
+      .from("matches")
+      .select("kickoff_time")
+      .eq("tournament_id", group.tournament_id)
+      .eq("stage_type", "group")
+      .order("kickoff_time", { ascending: true, nullsFirst: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("matches")
+      .select("kickoff_time")
+      .eq("tournament_id", group.tournament_id)
+      .eq("stage_type", "knockout")
+      .neq("home_team_name", "TBD")
+      .neq("away_team_name", "TBD")
+      .order("round_order", { ascending: true })
+      .order("kickoff_time", { ascending: true, nullsFirst: false })
+      .limit(1)
+      .maybeSingle()
+  ]);
 
   return (
     <main className="page-shell space-y-5">
       <h1 className="text-4xl font-black">{group.name}</h1>
       <GroupNav groupId={groupId} isAdmin />
+      <Card>
+        <CardHeader>
+          <CardTitle>Prediction phases</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-3xl bg-muted p-4">
+            <p className="text-sm text-muted-foreground">Group-stage lock</p>
+            <p className="text-lg font-black">
+              {firstGroup?.kickoff_time
+                ? new Date(firstGroup.kickoff_time).toLocaleString()
+                : "Waiting for fixtures"}
+            </p>
+          </div>
+          <div className="rounded-3xl bg-muted p-4">
+            <p className="text-sm text-muted-foreground">Knockout predictions</p>
+            <p className="text-lg font-black">
+              {predictionSettings?.knockout_opened_at ? "Open" : "Not open"}
+            </p>
+            {firstKnockout?.kickoff_time ? (
+              <p className="text-sm text-muted-foreground">
+                Locks {new Date(firstKnockout.kickoff_time).toLocaleString()}
+              </p>
+            ) : null}
+          </div>
+          <form action={openKnockoutPredictions}>
+            <input type="hidden" name="groupId" value={groupId} />
+            <Button type="submit" disabled={!firstKnockout || Boolean(predictionSettings?.knockout_opened_at)}>
+              Open knockout predictions
+            </Button>
+          </form>
+          <form action={recalculateGroupPredictionScores}>
+            <input type="hidden" name="groupId" value={groupId} />
+            <Button type="submit" variant="outline">
+              Recalculate scores
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
       <Card>
         <CardHeader>
           <CardTitle>Sync tournament data</CardTitle>

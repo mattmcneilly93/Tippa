@@ -14,7 +14,7 @@ export async function getGroupContext(groupId: string) {
   const { supabase, user } = await requireUser();
   const { data: group, error } = await supabase
     .from("groups")
-    .select("*,tournaments(*)")
+    .select("*,tournaments(*),group_prediction_settings(*)")
     .eq("id", groupId)
     .single();
 

@@ -1,5 +1,6 @@
 import { leaveGroup, updateGroupSettings } from "@/app/actions/groups";
 import { GroupNav } from "@/components/group-nav";
+import { ScoringSettingsFields } from "@/components/scoring-settings-fields";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,9 @@ export default async function SettingsPage({
 }) {
   const { groupId } = await params;
   const { group, isAdmin } = await getGroupContext(groupId);
+  const predictionSettings = Array.isArray(group.group_prediction_settings)
+    ? group.group_prediction_settings[0]
+    : group.group_prediction_settings;
 
   return (
     <main className="page-shell space-y-5">
@@ -30,6 +34,51 @@ export default async function SettingsPage({
               <div className="space-y-2">
                 <Label htmlFor="name">Group name</Label>
                 <Input id="name" name="name" defaultValue={group.name} required />
+              </div>
+              <div className="grid gap-4 rounded-3xl bg-muted p-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Group-stage predictions</Label>
+                  <Select
+                    name="groupStagePredictionMode"
+                    defaultValue={predictionSettings?.group_stage_prediction_mode ?? "table"}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="table">Rank each group table</SelectItem>
+                      <SelectItem value="match_outcome">Pick match winners</SelectItem>
+                      <SelectItem value="exact_score">Predict exact scores</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Scoring preset</Label>
+                  <Select
+                    name="scoringPreset"
+                    defaultValue={predictionSettings?.scoring_preset ?? "balanced"}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="simple">Simple</SelectItem>
+                      <SelectItem value="balanced">Balanced</SelectItem>
+                      <SelectItem value="high_stakes">High stakes</SelectItem>
+                      <SelectItem value="custom">Custom</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <label className="flex items-center gap-2 text-sm font-semibold md:col-span-2">
+                  <input
+                    name="includeThirdPlace"
+                    type="checkbox"
+                    className="h-4 w-4"
+                    defaultChecked={predictionSettings?.include_third_place ?? false}
+                  />
+                  Include third-place match in knockout predictions
+                </label>
+                <ScoringSettingsFields defaults={predictionSettings} />
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">

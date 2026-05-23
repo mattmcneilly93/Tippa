@@ -4,33 +4,95 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { scoringPresets, type ScoringPreset } from "@/lib/scoring";
 import { createInviteCode } from "@/lib/utils";
 
 const createGroupSchema = z.object({
   name: z.string().trim().min(2).max(60),
   tournamentCode: z.string().min(1),
   inviteCode: z.string().trim().min(3).max(24),
+  groupStagePredictionMode: z.enum(["table", "match_outcome", "exact_score"]).default("table"),
+  includeThirdPlace: z.coerce.boolean().optional(),
+  scoringPreset: z.enum(["simple", "balanced", "high_stakes", "custom"]).default("balanced"),
   prizeMode: z.enum(["none", "sponsored", "buy_in", "hybrid"]),
   currency: z.string().trim().min(3).max(3).default("NOK"),
   sponsorName: z.string().trim().max(60).optional(),
   basePrizeAmount: z.coerce.number().min(0).optional(),
   buyInAmount: z.coerce.number().min(0).optional(),
   buyInRequired: z.coerce.boolean().optional(),
-  payoutDescription: z.string().trim().max(240).optional()
+  payoutDescription: z.string().trim().max(240).optional(),
+  tableExactPositionPoints: z.coerce.number().int().min(0).optional(),
+  tableAdvancingStatusPoints: z.coerce.number().int().min(0).optional(),
+  tableGroupWinnerBonus: z.coerce.number().int().min(0).optional(),
+  matchOutcomePoints: z.coerce.number().int().min(0).optional(),
+  exactScorePoints: z.coerce.number().int().min(0).optional(),
+  correctGoalDifferencePoints: z.coerce.number().int().min(0).optional(),
+  correctOutcomePoints: z.coerce.number().int().min(0).optional(),
+  knockoutRoundOf32Points: z.coerce.number().int().min(0).optional(),
+  knockoutRoundOf16Points: z.coerce.number().int().min(0).optional(),
+  knockoutQuarterFinalPoints: z.coerce.number().int().min(0).optional(),
+  knockoutSemiFinalPoints: z.coerce.number().int().min(0).optional(),
+  knockoutChampionPoints: z.coerce.number().int().min(0).optional(),
+  knockoutThirdPlacePoints: z.coerce.number().int().min(0).optional()
 });
+
+type ScoreSettingInput = Partial<z.infer<typeof createGroupSchema>> & {
+  scoringPreset: ScoringPreset;
+};
+
+function scoreSettingsFor(parsed: ScoreSettingInput) {
+  const preset = parsed.scoringPreset === "custom" ? scoringPresets.balanced : scoringPresets[parsed.scoringPreset as Exclude<ScoringPreset, "custom">];
+  return {
+    table_exact_position_points: parsed.tableExactPositionPoints ?? preset.tableExactPositionPoints,
+    table_advancing_status_points:
+      parsed.tableAdvancingStatusPoints ?? preset.tableAdvancingStatusPoints,
+    table_group_winner_bonus: parsed.tableGroupWinnerBonus ?? preset.tableGroupWinnerBonus,
+    match_outcome_points: parsed.matchOutcomePoints ?? preset.matchOutcomePoints,
+    exact_score_points: parsed.exactScorePoints ?? preset.exactScorePoints,
+    correct_goal_difference_points:
+      parsed.correctGoalDifferencePoints ?? preset.correctGoalDifferencePoints,
+    correct_outcome_points: parsed.correctOutcomePoints ?? preset.correctOutcomePoints,
+    knockout_round_of_32_points:
+      parsed.knockoutRoundOf32Points ?? preset.knockoutRoundOf32Points,
+    knockout_round_of_16_points:
+      parsed.knockoutRoundOf16Points ?? preset.knockoutRoundOf16Points,
+    knockout_quarter_final_points:
+      parsed.knockoutQuarterFinalPoints ?? preset.knockoutQuarterFinalPoints,
+    knockout_semi_final_points: parsed.knockoutSemiFinalPoints ?? preset.knockoutSemiFinalPoints,
+    knockout_champion_points: parsed.knockoutChampionPoints ?? preset.knockoutChampionPoints,
+    knockout_third_place_points:
+      parsed.knockoutThirdPlacePoints ?? preset.knockoutThirdPlacePoints
+  };
+}
 
 export async function createGroup(formData: FormData) {
   const parsed = createGroupSchema.parse({
     name: formData.get("name"),
     tournamentCode: formData.get("tournamentCode"),
     inviteCode: formData.get("inviteCode"),
+    groupStagePredictionMode: formData.get("groupStagePredictionMode") || "table",
+    includeThirdPlace: formData.get("includeThirdPlace") === "on",
+    scoringPreset: formData.get("scoringPreset") || "balanced",
     prizeMode: formData.get("prizeMode"),
     currency: formData.get("currency") || "NOK",
     sponsorName: formData.get("sponsorName") || undefined,
     basePrizeAmount: formData.get("basePrizeAmount") || undefined,
     buyInAmount: formData.get("buyInAmount") || undefined,
     buyInRequired: formData.get("buyInRequired") === "on",
-    payoutDescription: formData.get("payoutDescription") || undefined
+    payoutDescription: formData.get("payoutDescription") || undefined,
+    tableExactPositionPoints: formData.get("tableExactPositionPoints") || undefined,
+    tableAdvancingStatusPoints: formData.get("tableAdvancingStatusPoints") || undefined,
+    tableGroupWinnerBonus: formData.get("tableGroupWinnerBonus") || undefined,
+    matchOutcomePoints: formData.get("matchOutcomePoints") || undefined,
+    exactScorePoints: formData.get("exactScorePoints") || undefined,
+    correctGoalDifferencePoints: formData.get("correctGoalDifferencePoints") || undefined,
+    correctOutcomePoints: formData.get("correctOutcomePoints") || undefined,
+    knockoutRoundOf32Points: formData.get("knockoutRoundOf32Points") || undefined,
+    knockoutRoundOf16Points: formData.get("knockoutRoundOf16Points") || undefined,
+    knockoutQuarterFinalPoints: formData.get("knockoutQuarterFinalPoints") || undefined,
+    knockoutSemiFinalPoints: formData.get("knockoutSemiFinalPoints") || undefined,
+    knockoutChampionPoints: formData.get("knockoutChampionPoints") || undefined,
+    knockoutThirdPlacePoints: formData.get("knockoutThirdPlacePoints") || undefined
   });
 
   const supabase = await createClient();
@@ -78,8 +140,12 @@ export async function createGroup(formData: FormData) {
   });
   if (memberError) throw memberError;
 
-  const { error: settingsError } = await service.from("group_score_settings").insert({
-    group_id: group.id
+  const { error: settingsError } = await service.from("group_prediction_settings").insert({
+    group_id: group.id,
+    group_stage_prediction_mode: parsed.groupStagePredictionMode,
+    include_third_place: parsed.includeThirdPlace ?? false,
+    scoring_preset: parsed.scoringPreset,
+    ...scoreSettingsFor(parsed)
   });
   if (settingsError) throw settingsError;
 
@@ -126,13 +192,29 @@ export async function updateGroupSettings(formData: FormData) {
     .omit({ tournamentCode: true, inviteCode: true })
     .parse({
       name: formData.get("name"),
+      groupStagePredictionMode: formData.get("groupStagePredictionMode") || "table",
+      includeThirdPlace: formData.get("includeThirdPlace") === "on",
+      scoringPreset: formData.get("scoringPreset") || "balanced",
       prizeMode: formData.get("prizeMode"),
       currency: formData.get("currency") || "NOK",
       sponsorName: formData.get("sponsorName") || undefined,
       basePrizeAmount: formData.get("basePrizeAmount") || undefined,
       buyInAmount: formData.get("buyInAmount") || undefined,
       buyInRequired: formData.get("buyInRequired") === "on",
-      payoutDescription: formData.get("payoutDescription") || undefined
+      payoutDescription: formData.get("payoutDescription") || undefined,
+      tableExactPositionPoints: formData.get("tableExactPositionPoints") || undefined,
+      tableAdvancingStatusPoints: formData.get("tableAdvancingStatusPoints") || undefined,
+      tableGroupWinnerBonus: formData.get("tableGroupWinnerBonus") || undefined,
+      matchOutcomePoints: formData.get("matchOutcomePoints") || undefined,
+      exactScorePoints: formData.get("exactScorePoints") || undefined,
+      correctGoalDifferencePoints: formData.get("correctGoalDifferencePoints") || undefined,
+      correctOutcomePoints: formData.get("correctOutcomePoints") || undefined,
+      knockoutRoundOf32Points: formData.get("knockoutRoundOf32Points") || undefined,
+      knockoutRoundOf16Points: formData.get("knockoutRoundOf16Points") || undefined,
+      knockoutQuarterFinalPoints: formData.get("knockoutQuarterFinalPoints") || undefined,
+      knockoutSemiFinalPoints: formData.get("knockoutSemiFinalPoints") || undefined,
+      knockoutChampionPoints: formData.get("knockoutChampionPoints") || undefined,
+      knockoutThirdPlacePoints: formData.get("knockoutThirdPlacePoints") || undefined
     });
 
   const supabase = await createClient();
@@ -151,6 +233,18 @@ export async function updateGroupSettings(formData: FormData) {
     .eq("id", groupId);
 
   if (error) throw error;
+
+  const { error: settingsError } = await supabase
+    .from("group_prediction_settings")
+    .update({
+      group_stage_prediction_mode: parsed.groupStagePredictionMode,
+      include_third_place: parsed.includeThirdPlace ?? false,
+      scoring_preset: parsed.scoringPreset,
+      ...scoreSettingsFor(parsed)
+    })
+    .eq("group_id", groupId);
+
+  if (settingsError) throw settingsError;
   revalidatePath(`/groups/${groupId}`);
 }
 

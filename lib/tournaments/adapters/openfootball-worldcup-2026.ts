@@ -45,6 +45,34 @@ function statusFor(match: OpenFootballMatch): NormalizedMatch["status"] {
   return "scheduled";
 }
 
+function classifyRound(match: OpenFootballMatch): Pick<NormalizedMatch, "stageType" | "roundKey" | "roundOrder"> {
+  const label = `${match.round ?? ""} ${match.group ?? ""}`.toLowerCase();
+
+  if (match.group || label.includes("group")) {
+    return { stageType: "group", roundKey: "group", roundOrder: 0 };
+  }
+  if (label.includes("third")) {
+    return { stageType: "knockout", roundKey: "third_place", roundOrder: 5 };
+  }
+  if (label.includes("final")) {
+    return { stageType: "knockout", roundKey: "final", roundOrder: 6 };
+  }
+  if (label.includes("semi")) {
+    return { stageType: "knockout", roundKey: "semi_final", roundOrder: 4 };
+  }
+  if (label.includes("quarter")) {
+    return { stageType: "knockout", roundKey: "quarter_final", roundOrder: 3 };
+  }
+  if (label.includes("16")) {
+    return { stageType: "knockout", roundKey: "round_of_16", roundOrder: 2 };
+  }
+  if (label.includes("32")) {
+    return { stageType: "knockout", roundKey: "round_of_32", roundOrder: 1 };
+  }
+
+  return { stageType: "knockout", roundKey: "round_of_32", roundOrder: 1 };
+}
+
 function externalIdFor(match: OpenFootballMatch, index: number) {
   return [
     match.date ?? "unknown-date",
@@ -74,11 +102,13 @@ export const openFootballWorldCup2026Adapter: TournamentAdapter = {
     const source = (await response.json()) as OpenFootballTournament;
     const matches = source.matches.map((match, index): NormalizedMatch => {
       const score = match.score?.ft ?? [null, null];
+      const round = classifyRound(match);
       return {
         externalId: externalIdFor(match, index),
         tournamentCode: "world-cup-2026",
         stage: match.round ?? "Fixture",
         groupName: match.group,
+        ...round,
         homeTeamName: match.team1 ?? "TBD",
         awayTeamName: match.team2 ?? "TBD",
         kickoffTime: normalizeKickoff(match.date, match.time),

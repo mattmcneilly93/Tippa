@@ -13,21 +13,21 @@ export default async function GroupPage({ params }: { params: Promise<{ groupId:
   const { groupId } = await params;
   const { supabase, group, members, isAdmin } = await getGroupContext(groupId);
 
-  const [{ data: predictions }, { count: totalMatches }] = await Promise.all([
-    supabase
-      .from("predictions")
-      .select("user_id,points,exact_score,correct_outcome")
-      .eq("group_id", groupId),
-    supabase
-      .from("matches")
-      .select("*", { count: "exact", head: true })
-      .eq("tournament_id", group.tournament_id)
+  const [{ data: tablePredictions }, { data: matchPredictions }, { data: knockoutPredictions }] =
+    await Promise.all([
+      supabase.from("group_table_predictions").select("user_id,points").eq("group_id", groupId),
+      supabase.from("match_predictions").select("user_id,points").eq("group_id", groupId),
+      supabase
+        .from("knockout_prediction_entries")
+        .select("user_id,points,round_key")
+        .eq("group_id", groupId)
   ]);
 
   const leaderboard = buildLeaderboard({
     members: members as never,
-    predictions: (predictions ?? []) as never,
-    totalMatches: totalMatches ?? 0
+    tablePredictions: (tablePredictions ?? []) as never,
+    matchPredictions: (matchPredictions ?? []) as never,
+    knockoutPredictions: (knockoutPredictions ?? []) as never
   });
 
   return (

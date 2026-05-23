@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { getGroupContext } from "@/lib/data";
+import { dateFormat } from "@/lib/utils";
 
 export default async function AdminPage({ params }: { params: Promise<{ groupId: string }> }) {
   const { groupId } = await params;
@@ -73,7 +74,7 @@ export default async function AdminPage({ params }: { params: Promise<{ groupId:
             </p>
             {firstKnockout?.kickoff_time ? (
               <p className="text-sm text-muted-foreground">
-                Locks {new Date(firstKnockout.kickoff_time).toLocaleString()}
+                Locks {dateFormat.format((firstKnockout.kickoff_time))}
               </p>
             ) : null}
           </div>

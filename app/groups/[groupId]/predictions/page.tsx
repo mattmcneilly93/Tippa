@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getGroupContext } from "@/lib/data";
 import { flagForTeam } from "@/lib/team-flags";
+import { dateFormat } from "@/lib/utils";
 
 type MatchRow = {
   id: string;
@@ -169,7 +170,7 @@ export default async function PredictionsPage({
         <CardContent className="space-y-4">
           {firstGroupKickoff ? (
             <p className="text-sm text-muted-foreground">
-              Locks {format(new Date(firstGroupKickoff), "EEE MMM d, HH:mm")}.
+              Locks {dateFormat.format(new Date(firstGroupKickoff))}.
             </p>
           ) : null}
           {settings.group_stage_prediction_mode === "table" ? (

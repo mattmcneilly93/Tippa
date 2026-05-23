@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { saveMatchOverride } from "@/app/actions/admin";
+import { saveMatchOverride, syncTournamentForGroup } from "@/app/actions/admin";
 import { GroupNav } from "@/components/group-nav";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,6 +24,20 @@ export default async function AdminPage({ params }: { params: Promise<{ groupId:
     <main className="page-shell space-y-5">
       <h1 className="text-4xl font-black">{group.name}</h1>
       <GroupNav groupId={groupId} isAdmin />
+      <Card>
+        <CardHeader>
+          <CardTitle>Sync tournament data</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-muted-foreground">
+            Pull the latest fixture and score data, then recalculate prediction points.
+          </p>
+          <form action={syncTournamentForGroup}>
+            <input type="hidden" name="groupId" value={groupId} />
+            <Button type="submit">Sync now</Button>
+          </form>
+        </CardContent>
+      </Card>
       <Card>
         <CardHeader>
           <CardTitle>Manual result override</CardTitle>

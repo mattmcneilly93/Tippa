@@ -156,8 +156,16 @@ export async function createGroup(formData: FormData) {
   redirect(`/groups/${group.id}`);
 }
 
-export async function joinGroup(formData: FormData) {
+export type JoinGroupState = {
+  error?: string;
+};
+
+export async function joinGroup(_state: JoinGroupState, formData: FormData): Promise<JoinGroupState> {
   const inviteCode = createInviteCode(String(formData.get("inviteCode")));
+  if (inviteCode.length < 3) {
+    return { error: "Enter a valid invite code." };
+  }
+
   const supabase = await createClient();
   const {
     data: { user }
@@ -171,9 +179,14 @@ export async function joinGroup(formData: FormData) {
     .from("groups")
     .select("id")
     .eq("invite_code", inviteCode)
-    .single();
+    .maybeSingle();
 
-  if (groupError) throw groupError;
+  if (groupError) {
+    return { error: "Could not check that invite code. Try again." };
+  }
+  if (!group) {
+    return { error: "No group found with that invite code." };
+  }
 
   const { error } = await service.from("group_members").upsert(
     {
@@ -184,7 +197,9 @@ export async function joinGroup(formData: FormData) {
     { onConflict: "group_id,user_id", ignoreDuplicates: true }
   );
 
-  if (error) throw error;
+  if (error) {
+    return { error: "Could not join that group. Try again." };
+  }
   revalidatePath("/dashboard");
   redirect(`/groups/${group.id}`);
 }

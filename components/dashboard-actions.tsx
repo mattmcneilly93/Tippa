@@ -1,5 +1,6 @@
 "use client";
 
+import { useActionState } from "react";
 import { KeyRound, UserRound } from "lucide-react";
 import { joinGroup } from "@/app/actions/groups";
 import { updateProfile } from "@/app/actions/profile";
@@ -21,6 +22,8 @@ export function DashboardActions({
 }: {
   defaultDisplayName: string;
 }) {
+  const [joinState, joinAction] = useActionState(joinGroup, {});
+
   return (
     <div className="flex flex-wrap gap-2">
       <Dialog>
@@ -35,11 +38,16 @@ export function DashboardActions({
             <DialogTitle>Join a group</DialogTitle>
             <DialogDescription>Enter an invite code from another Tippa pool.</DialogDescription>
           </DialogHeader>
-          <form action={joinGroup} className="space-y-4">
+          <form action={joinAction} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="inviteCode">Invite code</Label>
               <Input id="inviteCode" name="inviteCode" placeholder="CREW-2026" required />
             </div>
+            {joinState.error ? (
+              <p className="rounded-2xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm font-semibold text-destructive">
+                {joinState.error}
+              </p>
+            ) : null}
             <SubmitButton idleText="Join group" pendingText="Joining..." successText="Joined" className="w-full" />
           </form>
         </DialogContent>

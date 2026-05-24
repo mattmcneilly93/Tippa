@@ -5,55 +5,35 @@ import {
   saveMatchOverride,
   syncTournamentForGroup
 } from "@/app/actions/admin";
-import { GroupNav } from "@/components/group-nav";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SubmitButton } from "@/components/ui/submit-button";
-import { getGroupContext } from "@/lib/data";
+import { getAdminPageData, getGroupContext } from "@/lib/data";
 import { dateFormat } from "@/lib/utils";
 
 export default async function AdminPage({ params }: { params: Promise<{ groupId: string }> }) {
   const { groupId } = await params;
-  const { supabase, group, isAdmin } = await getGroupContext(groupId);
+  const { group, isAdmin } = await getGroupContext(groupId);
   if (!isAdmin) redirect(`/groups/${groupId}`);
   const predictionSettings = Array.isArray(group.group_prediction_settings)
     ? group.group_prediction_settings[0]
     : group.group_prediction_settings;
-
-  const [{ data: matches }, { data: firstGroup }, { data: firstKnockout }] = await Promise.all([
-    supabase
-      .from("matches")
-      .select("id,stage,home_team_name,away_team_name,kickoff_time,status,home_score,away_score")
-      .eq("tournament_id", group.tournament_id)
-      .order("kickoff_time", { ascending: true, nullsFirst: false })
-      .limit(24),
-    supabase
-      .from("matches")
-      .select("kickoff_time")
-      .eq("tournament_id", group.tournament_id)
-      .eq("stage_type", "group")
-      .order("kickoff_time", { ascending: true, nullsFirst: false })
-      .limit(1)
-      .maybeSingle(),
-    supabase
-      .from("matches")
-      .select("kickoff_time")
-      .eq("tournament_id", group.tournament_id)
-      .eq("stage_type", "knockout")
-      .neq("home_team_name", "TBD")
-      .neq("away_team_name", "TBD")
-      .order("round_order", { ascending: true })
-      .order("kickoff_time", { ascending: true, nullsFirst: false })
-      .limit(1)
-      .maybeSingle()
-  ]);
+  const { matches, firstGroup, firstKnockout } = await getAdminPageData(groupId);
 
   return (
-    <main className="page-shell space-y-5">
-      <h1 className="text-4xl font-black">{group.name}</h1>
-      <GroupNav groupId={groupId} isAdmin />
+    <>
       <Card>
         <CardHeader>
           <CardTitle>Prediction phases</CardTitle>
@@ -116,67 +96,110 @@ export default async function AdminPage({ params }: { params: Promise<{ groupId:
         <CardHeader>
           <CardTitle>Manual result override</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Overrides apply only to this group. Synced tournament data stays unchanged for
-            other pools.
-          </p>
+        <CardContent className="space-y-3">
           {(matches ?? []).map((match) => (
-            <form
+            <div
               key={match.id}
-              action={saveMatchOverride}
-              className="grid gap-3 rounded-3xl bg-muted p-4 md:grid-cols-[1fr_10rem_5rem_5rem_auto]"
+              className="grid gap-3 rounded-2xl bg-muted p-3 md:grid-cols-[1fr_auto_auto] md:items-center"
             >
-              <input type="hidden" name="groupId" value={groupId} />
-              <input type="hidden" name="matchId" value={match.id} />
-              <div>
+              <div className="min-w-0">
                 <p className="font-black">
                   {match.home_team_name} vs {match.away_team_name}
                 </p>
-                <p className="text-xs text-muted-foreground">{match.stage}</p>
+                <p className="text-xs text-muted-foreground">
+                  {match.stage}
+                  {match.kickoff_time ? ` · ${dateFormat.format(new Date(match.kickoff_time))}` : ""}
+                </p>
               </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Kickoff</Label>
-                <Input
-                  name="kickoffTime"
-                  type="datetime-local"
-                  defaultValue={match.kickoff_time?.slice(0, 16) ?? ""}
-                />
+              <div className="flex items-center gap-2 text-sm font-black">
+                <span>
+                  {match.home_score ?? "-"} - {match.away_score ?? "-"}
+                </span>
+                <Badge variant="outline" className="capitalize">
+                  {match.status}
+                </Badge>
               </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Home</Label>
-                <Input name="homeScore" type="number" min="0" defaultValue={match.home_score ?? ""} />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Away</Label>
-                <Input name="awayScore" type="number" min="0" defaultValue={match.away_score ?? ""} />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Status</Label>
-                <Select name="status" defaultValue={match.status}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="scheduled">Scheduled</SelectItem>
-                    <SelectItem value="live">Live</SelectItem>
-                    <SelectItem value="finished">Finished</SelectItem>
-                    <SelectItem value="postponed">Postponed</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
-                <SubmitButton
-                  idleText="Save"
-                  pendingText="Saving..."
-                  successText="Saved"
-                  size="sm"
-                  className="mt-2 w-full"
-                />
-              </div>
-            </form>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button type="button" variant="outline" size="sm">
+                    Override
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Override result</DialogTitle>
+                    <DialogDescription>
+                      Applies only to this group. Synced tournament data stays unchanged.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <form action={saveMatchOverride} className="space-y-4">
+                    <input type="hidden" name="groupId" value={groupId} />
+                    <input type="hidden" name="matchId" value={match.id} />
+                    <div className="rounded-2xl bg-muted p-3">
+                      <p className="font-black">
+                        {match.home_team_name} vs {match.away_team_name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{match.stage}</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor={`kickoff-${match.id}`}>Kickoff</Label>
+                      <Input
+                        id={`kickoff-${match.id}`}
+                        name="kickoffTime"
+                        type="datetime-local"
+                        defaultValue={match.kickoff_time?.slice(0, 16) ?? ""}
+                      />
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor={`home-score-${match.id}`}>Home score</Label>
+                        <Input
+                          id={`home-score-${match.id}`}
+                          name="homeScore"
+                          type="number"
+                          min="0"
+                          defaultValue={match.home_score ?? ""}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor={`away-score-${match.id}`}>Away score</Label>
+                        <Input
+                          id={`away-score-${match.id}`}
+                          name="awayScore"
+                          type="number"
+                          min="0"
+                          defaultValue={match.away_score ?? ""}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Status</Label>
+                      <Select name="status" defaultValue={match.status}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="scheduled">Scheduled</SelectItem>
+                          <SelectItem value="live">Live</SelectItem>
+                          <SelectItem value="finished">Finished</SelectItem>
+                          <SelectItem value="postponed">Postponed</SelectItem>
+                          <SelectItem value="cancelled">Cancelled</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <SubmitButton
+                      idleText="Save override"
+                      pendingText="Saving..."
+                      successText="Saved"
+                      className="w-full"
+                    />
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </div>
           ))}
         </CardContent>
       </Card>
-    </main>
+    </>
   );
 }

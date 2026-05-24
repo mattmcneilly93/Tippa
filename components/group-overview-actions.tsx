@@ -62,7 +62,7 @@ export function GroupOverviewActions({
     <div className="flex flex-wrap gap-2">
       <Dialog>
         <DialogTrigger asChild>
-          <Button type="button" variant="secondary">
+          <Button type="button" variant="outline" size="sm">
             <Copy className="h-4 w-4" />
             Invite
           </Button>
@@ -90,7 +90,7 @@ export function GroupOverviewActions({
       {tracksBuyIns ? (
         <Dialog>
           <DialogTrigger asChild>
-            <Button type="button" variant="secondary">
+            <Button type="button" variant="outline" size="sm">
               <WalletCards className="h-4 w-4" />
               Payments
             </Button>
@@ -139,7 +139,7 @@ export function GroupOverviewActions({
       ) : (
         <Dialog>
           <DialogTrigger asChild>
-            <Button type="button" variant="secondary">
+            <Button type="button" variant="outline" size="sm">
               <UsersRound className="h-4 w-4" />
               {members.length} members
             </Button>

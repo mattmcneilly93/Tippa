@@ -5,7 +5,6 @@ import {
   updateMemberRole
 } from "@/app/actions/groups";
 import { updateGroupDisplayName } from "@/app/actions/profile";
-import { GroupNav } from "@/components/group-nav";
 import { PrizeSettingsFields } from "@/components/prize-settings-fields";
 import { ScoringSettingsFields } from "@/components/scoring-settings-fields";
 import { Badge } from "@/components/ui/badge";
@@ -31,9 +30,7 @@ export default async function SettingsPage({
   const profile = Array.isArray(membership?.profiles) ? membership.profiles[0] : membership?.profiles;
 
   return (
-    <main className="page-shell space-y-5">
-      <h1 className="text-4xl font-black">{group.name}</h1>
-      <GroupNav groupId={groupId} isAdmin={Boolean(isAdmin)} />
+    <>
       <Card>
         <CardHeader>
           <CardTitle>Your name in this group</CardTitle>
@@ -203,7 +200,7 @@ export default async function SettingsPage({
       ) : (
         <MemberSettings groupId={groupId} />
       )}
-    </main>
+    </>
   );
 }
 

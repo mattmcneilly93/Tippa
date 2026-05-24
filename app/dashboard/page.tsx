@@ -4,41 +4,10 @@ import { DashboardActions } from "@/components/dashboard-actions";
 import { GroupCard } from "@/components/group-card";
 import { EmptyState } from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
-import { requireUser } from "@/lib/data";
+import { getDashboardData } from "@/lib/data";
 
 export default async function DashboardPage() {
-  const { supabase, user } = await requireUser();
-  const { data: groups, error } = await supabase
-    .from("groups")
-    .select("id,name,prize_mode,tournament_id,tournaments(name)")
-    .order("created_at", { ascending: false });
-
-  if (error) throw error;
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("display_name")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  const cards = await Promise.all(
-    (groups ?? []).map(async (group) => {
-      const { data: nextMatch } = await supabase
-        .from("matches")
-        .select("kickoff_time")
-        .eq("tournament_id", group.tournament_id)
-        .gt("kickoff_time", new Date().toISOString())
-        .order("kickoff_time")
-        .limit(1)
-        .maybeSingle();
-
-      return {
-        ...group,
-        nextKickoff: nextMatch?.kickoff_time ?? null,
-        rank: null
-      };
-    })
-  );
+  const { user, profile, cards } = await getDashboardData();
 
   return (
     <main className="page-shell space-y-6">

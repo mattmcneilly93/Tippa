@@ -1,15 +1,13 @@
 import { Trophy } from "lucide-react";
 import { saveKnockoutPrediction, saveMatchPrediction } from "@/app/actions/predictions";
-import { GroupNav } from "@/components/group-nav";
 import { GroupTablePredictions } from "@/components/group-table-predictions";
-import { CopyPredictionsForm } from "@/components/copy-predictions-form";
 import { EmptyState } from "@/components/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { getGroupContext } from "@/lib/data";
+import { getGroupContext, getPredictionPageData } from "@/lib/data";
 import { flagForTeam } from "@/lib/team-flags";
 import { dateFormat } from "@/lib/utils";
 
@@ -60,7 +58,7 @@ export default async function PredictionsPage({
   params: Promise<{ groupId: string }>;
 }) {
   const { groupId } = await params;
-  const { supabase, user, group, isAdmin } = await getGroupContext(groupId);
+  const { group } = await getGroupContext(groupId);
   const settings = settingsFor(group) ?? {
     group_stage_prediction_mode: "table",
     knockout_prediction_mode: "winner_bracket",
@@ -71,43 +69,10 @@ export default async function PredictionsPage({
   const tournament = Array.isArray(group.tournaments) ? group.tournaments[0] : group.tournaments;
   const maxThirdPlaceAdvancers = tournament?.group_best_third_place_advancers ?? 0;
 
-  const [
-    { data: matches },
-    { data: copyableGroups },
-    { data: tablePredictions },
-    { data: matchPredictions },
-    { data: knockoutPredictions }
-  ] = await Promise.all([
-    supabase
-      .from("matches")
-      .select("*")
-      .eq("tournament_id", group.tournament_id)
-      .order("round_order", { ascending: true })
-      .order("kickoff_time", { ascending: true, nullsFirst: false }),
-    supabase
-      .from("groups")
-      .select("id,name")
-      .eq("tournament_id", group.tournament_id)
-      .neq("id", groupId)
-      .order("name"),
-    supabase
-      .from("group_table_predictions")
-      .select("group_name,ranked_team_ids,third_place_advances,points")
-      .eq("group_id", groupId)
-      .eq("user_id", user.id),
-    supabase
-      .from("match_predictions")
-      .select("match_id,predicted_outcome,home_score,away_score,points")
-      .eq("group_id", groupId)
-      .eq("user_id", user.id),
-    supabase
-      .from("knockout_prediction_entries")
-      .select("round_key,slot_index,source_match_id,predicted_team_id,points")
-      .eq("group_id", groupId)
-      .eq("user_id", user.id)
-  ]);
+  const { matches, tablePredictions, matchPredictions, knockoutPredictions } =
+    await getPredictionPageData(groupId);
 
-  const allMatches = (matches ?? []) as MatchRow[];
+  const allMatches = matches as MatchRow[];
   const groupMatches = allMatches.filter((match) => match.stage_type === "group");
   const knockoutMatches = allMatches.filter((match) => match.stage_type === "knockout");
   const firstGroupKickoff = groupMatches.find((match) => match.kickoff_time)?.kickoff_time ?? null;
@@ -161,21 +126,7 @@ export default async function PredictionsPage({
   });
 
   return (
-    <main className="page-shell space-y-5">
-      <h1 className="text-4xl font-black">{group.name}</h1>
-      <GroupNav groupId={groupId} isAdmin={Boolean(isAdmin)} />
-
-      {copyableGroups?.length ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Copy predictions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <CopyPredictionsForm targetGroupId={groupId} copyableGroups={copyableGroups} />
-          </CardContent>
-        </Card>
-      ) : null}
-
+    <>
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between gap-3">
@@ -269,7 +220,7 @@ export default async function PredictionsPage({
           )}
         </CardContent>
       </Card>
-    </main>
+    </>
   );
 }
 

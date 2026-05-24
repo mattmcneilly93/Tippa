@@ -1,8 +1,8 @@
-import { format } from "date-fns";
 import { Trophy } from "lucide-react";
 import { saveKnockoutPrediction, saveMatchPrediction } from "@/app/actions/predictions";
 import { GroupNav } from "@/components/group-nav";
 import { GroupTablePredictions } from "@/components/group-table-predictions";
+import { CopyPredictionsForm } from "@/components/copy-predictions-form";
 import { EmptyState } from "@/components/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -73,6 +73,7 @@ export default async function PredictionsPage({
 
   const [
     { data: matches },
+    { data: copyableGroups },
     { data: tablePredictions },
     { data: matchPredictions },
     { data: knockoutPredictions }
@@ -83,6 +84,12 @@ export default async function PredictionsPage({
       .eq("tournament_id", group.tournament_id)
       .order("round_order", { ascending: true })
       .order("kickoff_time", { ascending: true, nullsFirst: false }),
+    supabase
+      .from("groups")
+      .select("id,name")
+      .eq("tournament_id", group.tournament_id)
+      .neq("id", groupId)
+      .order("name"),
     supabase
       .from("group_table_predictions")
       .select("group_name,ranked_team_ids,third_place_advances,points")
@@ -157,6 +164,17 @@ export default async function PredictionsPage({
     <main className="page-shell space-y-5">
       <h1 className="text-4xl font-black">{group.name}</h1>
       <GroupNav groupId={groupId} isAdmin={Boolean(isAdmin)} />
+
+      {copyableGroups?.length ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Copy predictions</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <CopyPredictionsForm targetGroupId={groupId} copyableGroups={copyableGroups} />
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader>

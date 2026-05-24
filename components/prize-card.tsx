@@ -22,6 +22,8 @@ export function PrizeCard({
   memberCount?: number;
   paidCount?: number;
 }) {
+  const tracksBuyIns = group.prize_mode === "buy_in" || group.prize_mode === "hybrid";
+  const hasBasePrize = group.prize_mode === "sponsored" || group.prize_mode === "hybrid";
   const buyInPool = (group.buy_in_amount ?? 0) * (paidCount ?? 0);
 
   return (
@@ -29,7 +31,11 @@ export function PrizeCard({
       <CardHeader>
         <div className="flex items-center justify-between gap-2">
           <CardTitle>Prize</CardTitle>
-          <Badge variant="warm">Outside payments</Badge>
+          {tracksBuyIns ? (
+            <Badge variant="warm">Outside payments</Badge>
+          ) : group.prize_mode === "none" ? (
+            <Badge variant="outline">No money prize</Badge>
+          ) : null}
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -43,7 +49,7 @@ export function PrizeCard({
           </span>
           <div>
             <p className="font-bold">
-              {group.prize_mode === "none" && "Just for bragging rights"}
+              {group.prize_mode === "none" && "No money prize set"}
               {group.prize_mode === "sponsored" &&
                 `Sponsored by ${group.sponsor_name || "someone generous"}`}
               {group.prize_mode === "buy_in" &&
@@ -51,26 +57,40 @@ export function PrizeCard({
               {group.prize_mode === "hybrid" &&
                 `${formatCurrency(group.base_prize_amount, group.currency)} + buy-in pool`}
             </p>
-            <p className="text-sm text-muted-foreground">
-              Payments are handled outside the app.
-            </p>
+            {group.prize_mode === "none" ? (
+              <p className="text-sm text-muted-foreground">
+                Just for bragging rights.
+              </p>
+            ) : tracksBuyIns ? (
+              <p className="text-sm text-muted-foreground">
+                Buy-in payments are tracked here, but handled outside the app.
+              </p>
+            ) : group.prize_mode === "sponsored" ? (
+              <p className="text-sm text-muted-foreground">
+                The prize is provided by the sponsor.
+              </p>
+            ) : null}
           </div>
         </div>
         {group.prize_mode !== "none" ? (
           <div className="grid grid-cols-2 gap-3 text-sm">
-            <div className="rounded-2xl bg-muted p-3">
-              <p className="text-muted-foreground">Base</p>
-              <p className="font-black">
-                {formatCurrency(group.base_prize_amount ?? 0, group.currency)}
-              </p>
-            </div>
-            <div className="rounded-2xl bg-muted p-3">
-              <p className="text-muted-foreground">Buy-in pool</p>
-              <p className="font-black">{formatCurrency(buyInPool, group.currency)}</p>
-            </div>
+            {hasBasePrize ? (
+              <div className="rounded-2xl bg-muted p-3">
+                <p className="text-muted-foreground">Base</p>
+                <p className="font-black">
+                  {formatCurrency(group.base_prize_amount ?? 0, group.currency)}
+                </p>
+              </div>
+            ) : null}
+            {tracksBuyIns ? (
+              <div className="rounded-2xl bg-muted p-3">
+                <p className="text-muted-foreground">Buy-in pool</p>
+                <p className="font-black">{formatCurrency(buyInPool, group.currency)}</p>
+              </div>
+            ) : null}
           </div>
         ) : null}
-        {memberCount != null && paidCount != null ? (
+        {tracksBuyIns && memberCount != null && paidCount != null ? (
           <p className="text-sm text-muted-foreground">
             {paidCount} of {memberCount} marked paid.
           </p>

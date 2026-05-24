@@ -2,6 +2,7 @@ import type { LeaderboardRow } from "@/components/leaderboard";
 
 type Member = {
   user_id: string;
+  display_name?: string | null;
   profiles: { display_name: string } | { display_name: string }[] | null;
 };
 
@@ -63,7 +64,7 @@ export function buildLeaderboard({
 
       return {
         userId: member.user_id,
-        displayName: displayName(member.profiles),
+        displayName: member.display_name?.trim() || displayName(member.profiles),
         groupStagePoints,
         knockoutPoints,
         championCorrect,

@@ -22,7 +22,7 @@ export async function getGroupContext(groupId: string) {
 
   const { data: members, error: membersError } = await supabase
     .from("group_members")
-    .select("id,user_id,role,has_paid,profiles(display_name)")
+    .select("id,user_id,display_name,role,has_paid,profiles(display_name)")
     .eq("group_id", groupId);
 
   if (membersError) throw membersError;

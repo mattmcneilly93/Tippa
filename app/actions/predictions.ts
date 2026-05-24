@@ -38,6 +38,11 @@ const knockoutSchema = z.object({
   predictedTeamId: z.string().uuid()
 });
 
+const copyPredictionsSchema = z.object({
+  sourceGroupId: z.string().uuid(),
+  targetGroupId: z.string().uuid()
+});
+
 async function requireUser() {
   const supabase = await createClient();
   const {
@@ -77,6 +82,15 @@ async function assertGroupStageUnlocked(supabase: SupabaseClient, groupId: strin
   }
 }
 
+async function isGroupStageUnlocked(supabase: SupabaseClient, groupId: string) {
+  try {
+    await assertGroupStageUnlocked(supabase, groupId);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function getThirdPlaceAdvancerLimit(supabase: SupabaseClient, groupId: string) {
   const { tournament } = await getGroupTournament(supabase, groupId);
   return tournament?.group_best_third_place_advancers ?? 0;
@@ -94,6 +108,26 @@ async function assertKnockoutUnlocked(supabase: SupabaseClient, groupId: string)
   if (settings.knockout_locked_at && new Date(settings.knockout_locked_at) <= new Date()) {
     throw new Error("Knockout predictions are locked.");
   }
+}
+
+async function isKnockoutUnlocked(supabase: SupabaseClient, groupId: string) {
+  try {
+    await assertKnockoutUnlocked(supabase, groupId);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function predictionSettingsFor(supabase: SupabaseClient, groupId: string) {
+  const { data, error } = await supabase
+    .from("group_prediction_settings")
+    .select("group_stage_prediction_mode,knockout_prediction_mode")
+    .eq("group_id", groupId)
+    .single();
+
+  if (error) throw error;
+  return data;
 }
 
 async function assertTablePredictionShape(
@@ -275,4 +309,152 @@ export async function saveKnockoutPrediction(formData: FormData) {
 
   if (error) throw error;
   revalidatePath(`/groups/${parsed.groupId}/predictions`);
+}
+
+export async function copyPredictionsFromGroup(formData: FormData) {
+  const parsed = copyPredictionsSchema.parse({
+    sourceGroupId: formData.get("sourceGroupId"),
+    targetGroupId: formData.get("targetGroupId")
+  });
+
+  if (parsed.sourceGroupId === parsed.targetGroupId) {
+    throw new Error("Choose a different group to copy from.");
+  }
+
+  const { supabase, user } = await requireUser();
+  const [source, target, sourceSettings, targetSettings] = await Promise.all([
+    getGroupTournament(supabase, parsed.sourceGroupId),
+    getGroupTournament(supabase, parsed.targetGroupId),
+    predictionSettingsFor(supabase, parsed.sourceGroupId),
+    predictionSettingsFor(supabase, parsed.targetGroupId)
+  ]);
+
+  if (source.tournamentId !== target.tournamentId) {
+    throw new Error("Predictions can only be copied between groups in the same tournament.");
+  }
+
+  let copied = 0;
+  const groupStageOpen = await isGroupStageUnlocked(supabase, parsed.targetGroupId);
+
+  if (
+    groupStageOpen &&
+    sourceSettings.group_stage_prediction_mode === targetSettings.group_stage_prediction_mode
+  ) {
+    if (targetSettings.group_stage_prediction_mode === "table") {
+      const { data, error } = await supabase
+        .from("group_table_predictions")
+        .select("group_name,ranked_team_ids,third_place_advances")
+        .eq("group_id", parsed.sourceGroupId)
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+      if (data?.length) {
+        const { error: upsertError } = await supabase.from("group_table_predictions").upsert(
+          data.map((prediction) => ({
+            group_id: parsed.targetGroupId,
+            user_id: user.id,
+            group_name: prediction.group_name,
+            ranked_team_ids: prediction.ranked_team_ids,
+            third_place_advances: prediction.third_place_advances
+          })),
+          { onConflict: "group_id,user_id,group_name" }
+        );
+        if (upsertError) throw upsertError;
+        copied += data.length;
+      }
+    } else {
+      const { data, error } = await supabase
+        .from("match_predictions")
+        .select("match_id,predicted_outcome,home_score,away_score,exact_score,correct_outcome,correct_goal_difference")
+        .eq("group_id", parsed.sourceGroupId)
+        .eq("user_id", user.id)
+        .eq("prediction_phase", "group");
+
+      if (error) throw error;
+      if (data?.length) {
+        const { error: upsertError } = await supabase.from("match_predictions").upsert(
+          data.map((prediction) => ({
+            group_id: parsed.targetGroupId,
+            user_id: user.id,
+            match_id: prediction.match_id,
+            prediction_phase: "group",
+            predicted_outcome: prediction.predicted_outcome,
+            home_score: prediction.home_score,
+            away_score: prediction.away_score,
+            points: 0,
+            exact_score: false,
+            correct_outcome: false,
+            correct_goal_difference: false
+          })),
+          { onConflict: "group_id,user_id,match_id" }
+        );
+        if (upsertError) throw upsertError;
+        copied += data.length;
+      }
+    }
+  }
+
+  const knockoutOpen = await isKnockoutUnlocked(supabase, parsed.targetGroupId);
+  if (knockoutOpen && sourceSettings.knockout_prediction_mode === targetSettings.knockout_prediction_mode) {
+    if (targetSettings.knockout_prediction_mode === "winner_bracket") {
+      const { data, error } = await supabase
+        .from("knockout_prediction_entries")
+        .select("round_key,slot_index,source_match_id,predicted_team_id")
+        .eq("group_id", parsed.sourceGroupId)
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+      if (data?.length) {
+        const { error: upsertError } = await supabase.from("knockout_prediction_entries").upsert(
+          data.map((prediction) => ({
+            group_id: parsed.targetGroupId,
+            user_id: user.id,
+            round_key: prediction.round_key,
+            slot_index: prediction.slot_index,
+            source_match_id: prediction.source_match_id,
+            predicted_team_id: prediction.predicted_team_id,
+            points: 0
+          })),
+          { onConflict: "group_id,user_id,round_key,slot_index" }
+        );
+        if (upsertError) throw upsertError;
+        copied += data.length;
+      }
+    } else {
+      const { data, error } = await supabase
+        .from("match_predictions")
+        .select("match_id,predicted_outcome,home_score,away_score")
+        .eq("group_id", parsed.sourceGroupId)
+        .eq("user_id", user.id)
+        .eq("prediction_phase", "knockout");
+
+      if (error) throw error;
+      if (data?.length) {
+        const { error: upsertError } = await supabase.from("match_predictions").upsert(
+          data.map((prediction) => ({
+            group_id: parsed.targetGroupId,
+            user_id: user.id,
+            match_id: prediction.match_id,
+            prediction_phase: "knockout",
+            predicted_outcome: prediction.predicted_outcome,
+            home_score: prediction.home_score,
+            away_score: prediction.away_score,
+            points: 0,
+            exact_score: false,
+            correct_outcome: false,
+            correct_goal_difference: false
+          })),
+          { onConflict: "group_id,user_id,match_id" }
+        );
+        if (upsertError) throw upsertError;
+        copied += data.length;
+      }
+    }
+  }
+
+  if (!copied) {
+    throw new Error("No compatible open predictions were available to copy.");
+  }
+
+  revalidatePath(`/groups/${parsed.targetGroupId}/predictions`);
 }

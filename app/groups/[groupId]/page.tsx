@@ -1,10 +1,8 @@
-import { markPaid } from "@/app/actions/groups";
 import { GroupNav } from "@/components/group-nav";
-import { InviteCodeCard } from "@/components/invite-code-card";
+import { GroupOverviewActions } from "@/components/group-overview-actions";
 import { Leaderboard } from "@/components/leaderboard";
 import { PrizeCard } from "@/components/prize-card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getGroupContext } from "@/lib/data";
 import { buildLeaderboard } from "@/lib/leaderboard";
@@ -29,64 +27,30 @@ export default async function GroupPage({ params }: { params: Promise<{ groupId:
     matchPredictions: (matchPredictions ?? []) as never,
     knockoutPredictions: (knockoutPredictions ?? []) as never
   });
+  const tracksBuyIns = group.prize_mode === "buy_in" || group.prize_mode === "hybrid";
 
   return (
     <main className="page-shell space-y-5">
-      <section className="rounded-[2rem] bg-primary p-6 text-primary-foreground">
-        <Badge variant="warm">{group.tournaments?.name ?? "Tournament"}</Badge>
-        <h1 className="mt-3 text-4xl font-black">{group.name}</h1>
+      <section className="flex flex-col gap-5 rounded-[2rem] bg-primary p-6 text-primary-foreground md:flex-row md:items-end md:justify-between">
+        <div>
+          <Badge variant="warm">{group.tournaments?.name ?? "Tournament"}</Badge>
+          <h1 className="mt-3 text-4xl font-black">{group.name}</h1>
+        </div>
+        <GroupOverviewActions
+          groupId={groupId}
+          inviteCode={group.invite_code}
+          isAdmin={Boolean(isAdmin)}
+          tracksBuyIns={tracksBuyIns}
+          members={members}
+        />
       </section>
       <GroupNav groupId={groupId} isAdmin={Boolean(isAdmin)} />
-      <div className="grid gap-4 lg:grid-cols-[1fr_0.9fr]">
-        <div className="space-y-4">
-          <PrizeCard
-            group={group}
-            memberCount={members.length}
-            paidCount={members.filter((member) => member.has_paid).length}
-          />
-          <InviteCodeCard code={group.invite_code} />
-          <Card id="members">
-            <CardHeader>
-              <CardTitle>Members</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {members.map((member) => {
-                const profile = Array.isArray(member.profiles)
-                  ? member.profiles[0]
-                  : member.profiles;
-                return (
-                  <div
-                    key={member.id}
-                    className="flex items-center justify-between gap-3 rounded-2xl bg-muted p-3"
-                  >
-                    <div>
-                      <p className="font-black">{profile?.display_name ?? "Player"}</p>
-                      <p className="text-xs capitalize text-muted-foreground">{member.role}</p>
-                    </div>
-                    {isAdmin ? (
-                      <form action={markPaid}>
-                        <input type="hidden" name="groupId" value={groupId} />
-                        <input type="hidden" name="memberId" value={member.id} />
-                        <input
-                          type="hidden"
-                          name="hasPaid"
-                          value={member.has_paid ? "false" : "true"}
-                        />
-                        <Button type="submit" variant="outline" size="sm">
-                          {member.has_paid ? "Paid" : "Mark paid"}
-                        </Button>
-                      </form>
-                    ) : (
-                      <Badge variant={member.has_paid ? "warm" : "outline"}>
-                        {member.has_paid ? "Paid" : "Unpaid"}
-                      </Badge>
-                    )}
-                  </div>
-                );
-              })}
-            </CardContent>
-          </Card>
-        </div>
+      <div className="grid gap-4 lg:grid-cols-[0.85fr_1.15fr]">
+        <PrizeCard
+          group={group}
+          memberCount={members.length}
+          paidCount={members.filter((member) => member.has_paid).length}
+        />
         <Card>
           <CardHeader>
             <CardTitle>Leaderboard</CardTitle>

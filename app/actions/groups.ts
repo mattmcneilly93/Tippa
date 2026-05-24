@@ -279,6 +279,8 @@ export async function leaveGroup(formData: FormData) {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  await assertNotLastAdmin(groupId, user.id);
+
   const { error } = await supabase
     .from("group_members")
     .delete()
@@ -290,11 +292,83 @@ export async function leaveGroup(formData: FormData) {
   redirect("/dashboard");
 }
 
+export async function updateMemberRole(formData: FormData) {
+  const groupId = String(formData.get("groupId"));
+  const memberId = String(formData.get("memberId"));
+  const role = String(formData.get("role"));
+  if (role !== "admin" && role !== "member") throw new Error("Invalid role");
+
+  const actingUser = await requireGroupAdmin(groupId);
+  const service = createServiceClient();
+
+  const { data: target, error: targetError } = await service
+    .from("group_members")
+    .select("id,user_id,role")
+    .eq("id", memberId)
+    .eq("group_id", groupId)
+    .single();
+
+  if (targetError) throw targetError;
+  if (target.user_id === actingUser.id && role !== "admin") {
+    await assertNotLastAdmin(groupId, target.user_id);
+  }
+
+  const { error } = await service
+    .from("group_members")
+    .update({ role })
+    .eq("id", memberId)
+    .eq("group_id", groupId);
+
+  if (error) throw error;
+  revalidatePath(`/groups/${groupId}`);
+  revalidatePath(`/groups/${groupId}/settings`);
+}
+
+export async function removeGroupMember(formData: FormData) {
+  const groupId = String(formData.get("groupId"));
+  const memberId = String(formData.get("memberId"));
+  await requireGroupAdmin(groupId);
+
+  const service = createServiceClient();
+  const { data: target, error: targetError } = await service
+    .from("group_members")
+    .select("id,user_id,role")
+    .eq("id", memberId)
+    .eq("group_id", groupId)
+    .single();
+
+  if (targetError) throw targetError;
+  await assertNotLastAdmin(groupId, target.user_id);
+
+  const { error } = await service
+    .from("group_members")
+    .delete()
+    .eq("id", memberId)
+    .eq("group_id", groupId);
+
+  if (error) throw error;
+  revalidatePath(`/groups/${groupId}`);
+  revalidatePath(`/groups/${groupId}/settings`);
+  revalidatePath("/dashboard");
+}
+
 export async function markPaid(formData: FormData) {
   const groupId = String(formData.get("groupId"));
   const memberId = String(formData.get("memberId"));
   const hasPaid = formData.get("hasPaid") === "true";
   const supabase = await createClient();
+
+  const { data: group, error: groupError } = await supabase
+    .from("groups")
+    .select("prize_mode")
+    .eq("id", groupId)
+    .single();
+
+  if (groupError) throw groupError;
+  if (group.prize_mode !== "buy_in" && group.prize_mode !== "hybrid") {
+    throw new Error("This group does not track member payments.");
+  }
+
   const { error } = await supabase
     .from("group_members")
     .update({ has_paid: hasPaid })
@@ -302,6 +376,47 @@ export async function markPaid(formData: FormData) {
 
   if (error) throw error;
   revalidatePath(`/groups/${groupId}`);
+}
+
+async function requireGroupAdmin(groupId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { data: member, error } = await supabase
+    .from("group_members")
+    .select("role")
+    .eq("group_id", groupId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (member?.role !== "admin") throw new Error("Forbidden");
+  return user;
+}
+
+async function assertNotLastAdmin(groupId: string, userId: string) {
+  const service = createServiceClient();
+  const { data: membership, error: membershipError } = await service
+    .from("group_members")
+    .select("role")
+    .eq("group_id", groupId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (membershipError) throw membershipError;
+  if (membership?.role !== "admin") return;
+
+  const { count, error } = await service
+    .from("group_members")
+    .select("id", { count: "exact", head: true })
+    .eq("group_id", groupId)
+    .eq("role", "admin");
+
+  if (error) throw error;
+  if ((count ?? 0) <= 1) throw new Error("A group must have at least one admin.");
 }
 
 async function ensureProfile(userId: string, displayName: string) {

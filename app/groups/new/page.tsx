@@ -1,5 +1,6 @@
 import { createGroup } from "@/app/actions/groups";
 import { supportedTournaments } from "@/lib/tournaments/registry";
+import { PrizeSettingsFields } from "@/components/prize-settings-fields";
 import { ScoringSettingsFields } from "@/components/scoring-settings-fields";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -93,49 +94,7 @@ export default function NewGroupPage() {
               </p>
               <ScoringSettingsFields />
             </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Prize mode</Label>
-                <Select name="prizeMode" defaultValue="none">
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    <SelectItem value="sponsored">Sponsored</SelectItem>
-                    <SelectItem value="buy_in">Buy-in</SelectItem>
-                    <SelectItem value="hybrid">Hybrid</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="currency">Currency</Label>
-                <Input id="currency" name="currency" defaultValue="NOK" maxLength={3} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="sponsorName">Sponsor name</Label>
-                <Input id="sponsorName" name="sponsorName" placeholder="Optional sponsor" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="basePrizeAmount">Base prize</Label>
-                <Input id="basePrizeAmount" name="basePrizeAmount" type="number" min="0" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="buyInAmount">Buy-in amount</Label>
-                <Input id="buyInAmount" name="buyInAmount" type="number" min="0" />
-              </div>
-            </div>
-            <label className="flex items-center gap-2 text-sm font-semibold">
-              <input name="buyInRequired" type="checkbox" className="h-4 w-4" />
-              Buy-in required
-            </label>
-            <div className="space-y-2">
-              <Label htmlFor="payoutDescription">Payout description</Label>
-              <Input id="payoutDescription" name="payoutDescription" placeholder="Winner gets dinner bragging rights" />
-            </div>
-            <p className="rounded-2xl bg-muted p-3 text-sm text-muted-foreground">
-              Payments are handled outside the app.
-            </p>
+            <PrizeSettingsFields />
             <Button type="submit" size="lg" className="w-full">
               Create group
             </Button>

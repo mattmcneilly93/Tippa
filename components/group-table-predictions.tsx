@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { ArrowDown, ArrowUp, Check, GripVertical, Loader2 } from "lucide-react";
 import { saveGroupTablePrediction } from "@/app/actions/predictions";
 import { Badge } from "@/components/ui/badge";
@@ -62,6 +62,14 @@ export function GroupTablePredictions({
   const dragged = useRef<{ groupName: string; index: number } | null>(null);
   const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const saveVersions = useRef<Record<string, number>>({});
+
+  useEffect(() => {
+    setOrders(initialOrders);
+    setThirdPlaceAdvances(
+      Object.fromEntries(groups.map((group) => [group.groupName, group.thirdPlaceAdvances]))
+    );
+    setStatuses({});
+  }, [groups, initialOrders]);
 
   function persist(groupName: string, teams: Team[], thirdAdvances = thirdPlaceAdvances[groupName] ?? false) {
     if (locked) return;

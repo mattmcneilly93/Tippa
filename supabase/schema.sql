@@ -52,6 +52,7 @@ create table public.group_members (
   id uuid primary key default gen_random_uuid(),
   group_id uuid not null references public.groups(id) on delete cascade,
   user_id uuid not null references public.profiles(id) on delete cascade,
+  display_name text,
   role group_role not null default 'member',
   has_paid boolean not null default false,
   joined_at timestamptz not null default now(),

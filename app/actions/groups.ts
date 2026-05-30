@@ -162,6 +162,16 @@ export type JoinGroupState = {
 
 export async function joinGroup(_state: JoinGroupState, formData: FormData): Promise<JoinGroupState> {
   const inviteCode = createInviteCode(String(formData.get("inviteCode")));
+  return joinGroupByInviteCode(inviteCode);
+}
+
+export async function joinGroupFromInvite(formData: FormData) {
+  const inviteCode = createInviteCode(String(formData.get("inviteCode")));
+  const result = await joinGroupByInviteCode(inviteCode);
+  if (result.error) redirect(`/invite?code=${encodeURIComponent(inviteCode)}&error=join`);
+}
+
+async function joinGroupByInviteCode(inviteCode: string): Promise<JoinGroupState> {
   if (inviteCode.length < 3) {
     return { error: "Enter a valid invite code." };
   }

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Copy, UsersRound, WalletCards } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Copy, LinkIcon, UsersRound, WalletCards } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { markPaid } from "@/app/actions/groups";
 import { Badge } from "@/components/ui/badge";
@@ -45,12 +45,17 @@ export function GroupOverviewActions({
   members
 }: GroupOverviewActionsProps) {
   const router = useRouter();
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<"link" | "code" | null>(null);
+  const [inviteUrl, setInviteUrl] = useState(`/invite?code=${encodeURIComponent(inviteCode)}`);
 
-  async function copyInviteCode() {
-    await navigator.clipboard.writeText(inviteCode);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1500);
+  useEffect(() => {
+    setInviteUrl(new URL(`/invite?code=${encodeURIComponent(inviteCode)}`, window.location.origin).toString());
+  }, [inviteCode]);
+
+  async function copyInvite(value: string, type: "link" | "code") {
+    await navigator.clipboard.writeText(value);
+    setCopied(type);
+    window.setTimeout(() => setCopied(null), 1500);
   }
 
   async function updatePayment(formData: FormData) {
@@ -69,19 +74,25 @@ export function GroupOverviewActions({
         </DialogTrigger>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Invite code</DialogTitle>
-            <DialogDescription>Share this code with people who should join the pool.</DialogDescription>
+            <DialogTitle>Invite link</DialogTitle>
+            <DialogDescription>Share this link with people who should join the pool.</DialogDescription>
           </DialogHeader>
-          <div className="flex items-center gap-3 rounded-2xl bg-muted p-3">
-            <code className="min-w-0 flex-1 truncate text-xl font-black">{inviteCode}</code>
+          <div className="grid gap-2 sm:grid-cols-2">
             <Button
               type="button"
-              size="sm"
-              variant={copied ? "success" : "outline"}
-              onClick={copyInviteCode}
+              variant={copied === "link" ? "success" : "outline"}
+              onClick={() => copyInvite(inviteUrl, "link")}
+            >
+              <LinkIcon className="h-4 w-4" />
+              {copied === "link" ? "Link copied" : "Copy link"}
+            </Button>
+            <Button
+              type="button"
+              variant={copied === "code" ? "success" : "outline"}
+              onClick={() => copyInvite(inviteCode, "code")}
             >
               <Copy className="h-4 w-4" />
-              {copied ? "Copied" : "Copy"}
+              {copied === "code" ? "Code copied" : "Copy code"}
             </Button>
           </div>
         </DialogContent>

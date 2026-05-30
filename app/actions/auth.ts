@@ -19,6 +19,7 @@ async function origin() {
 
 export async function signInWithOAuth(formData: FormData) {
   const provider = String(formData.get("provider"));
+  const next = safeNextPath(formData.get("next"));
   if (provider !== "google" && provider !== "apple") {
     throw new Error("Unsupported auth provider.");
   }
@@ -27,7 +28,7 @@ export async function signInWithOAuth(formData: FormData) {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider,
     options: {
-      redirectTo: `${await origin()}/auth/callback`
+      redirectTo: `${await origin()}/auth/callback?next=${encodeURIComponent(next)}`
     }
   });
 
@@ -37,16 +38,17 @@ export async function signInWithOAuth(formData: FormData) {
 
 export async function signInWithMagicLink(formData: FormData) {
   const email = String(formData.get("email"));
+  const next = safeNextPath(formData.get("next"));
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: `${await origin()}/auth/callback`
+      emailRedirectTo: `${await origin()}/auth/callback?next=${encodeURIComponent(next)}`
     }
   });
 
   if (error) throw error;
-  redirect("/login?sent=1");
+  redirect(`/login?sent=1&next=${encodeURIComponent(next)}`);
 }
 
 export async function signOut() {
@@ -54,4 +56,9 @@ export async function signOut() {
   await supabase.auth.signOut();
   revalidatePath("/", "layout");
   redirect("/");
+}
+
+function safeNextPath(value: FormDataEntryValue | null) {
+  const next = typeof value === "string" ? value : "";
+  return next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
 }

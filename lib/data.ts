@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { createInviteCode } from "@/lib/utils";
 
 export const requireUser = cache(async function requireUser() {
   const supabase = await createClient();
@@ -188,4 +189,32 @@ export const getDashboardData = cache(async function getDashboardData() {
   );
 
   return { user, profile, cards };
+});
+
+export const getInvitePreview = cache(async function getInvitePreview(rawCode: string) {
+  const inviteCode = createInviteCode(rawCode);
+  if (inviteCode.length < 3) return null;
+
+  const service = createServiceClient();
+  const { data, error } = await service
+    .from("groups")
+    .select("id,name,invite_code,tournaments(name)")
+    .eq("invite_code", inviteCode)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+});
+
+export const hasJoinedGroup = cache(async function hasJoinedGroup(groupId: string, userId: string) {
+  const service = createServiceClient();
+  const { data, error } = await service
+    .from("group_members")
+    .select("id")
+    .eq("group_id", groupId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return Boolean(data);
 });

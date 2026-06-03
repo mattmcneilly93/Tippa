@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/server";
+import { requireAppUser } from "@/lib/dev-auth";
 import { scoringPresets, type ScoringPreset } from "@/lib/scoring";
 import { createInviteCode } from "@/lib/utils";
 
@@ -97,11 +98,7 @@ export async function createGroup(formData: FormData) {
     knockoutThirdPlacePoints: formData.get("knockoutThirdPlacePoints") || undefined
   });
 
-  const supabase = await createClient();
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const { user } = await requireAppUser();
 
   await ensureProfile(user.id, user.user_metadata?.name ?? user.email?.split("@")[0] ?? "Player");
 
@@ -176,11 +173,7 @@ async function joinGroupByInviteCode(inviteCode: string): Promise<JoinGroupState
     return { error: "Enter a valid invite code." };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const { user } = await requireAppUser();
 
   await ensureProfile(user.id, user.user_metadata?.name ?? user.email?.split("@")[0] ?? "Player");
 
@@ -246,11 +239,7 @@ export async function updateGroupSettings(formData: FormData) {
       knockoutThirdPlacePoints: formData.get("knockoutThirdPlacePoints") || undefined
     });
 
-  const supabase = await createClient();
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const { supabase, user } = await requireAppUser();
 
   const { data: member, error: memberError } = await supabase
     .from("group_members")
@@ -298,11 +287,7 @@ export async function updateGroupSettings(formData: FormData) {
 
 export async function leaveGroup(formData: FormData) {
   const groupId = String(formData.get("groupId"));
-  const supabase = await createClient();
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const { supabase, user } = await requireAppUser();
 
   await assertNotLastAdmin(groupId, user.id);
 
@@ -381,7 +366,7 @@ export async function markPaid(formData: FormData) {
   const groupId = String(formData.get("groupId"));
   const memberId = String(formData.get("memberId"));
   const hasPaid = formData.get("hasPaid") === "true";
-  const supabase = await createClient();
+  const { supabase } = await requireAppUser();
 
   const { data: group, error: groupError } = await supabase
     .from("groups")
@@ -404,11 +389,7 @@ export async function markPaid(formData: FormData) {
 }
 
 async function requireGroupAdmin(groupId: string) {
-  const supabase = await createClient();
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const { supabase, user } = await requireAppUser();
 
   const { data: member, error } = await supabase
     .from("group_members")

@@ -52,6 +52,11 @@ function isLockedAt(time: string | null | undefined) {
   return Boolean(time && new Date(time) <= new Date());
 }
 
+const groupNameSorter = new Intl.Collator(undefined, {
+  numeric: true,
+  sensitivity: "base"
+});
+
 export default async function PredictionsPage({
   params
 }: {
@@ -114,16 +119,18 @@ export default async function PredictionsPage({
     }
     teamsByGroup.set(groupName, list);
   }
-  const tableGroups = [...teamsByGroup.entries()].map(([groupName, teams]) => {
-    const prediction = tablePredictionByGroup.get(groupName);
-    return {
-      groupName,
-      teams,
-      rankedTeamIds: prediction?.ranked_team_ids ?? null,
-      thirdPlaceAdvances: prediction?.third_place_advances ?? false,
-      points: prediction?.points ?? null
-    };
-  });
+  const tableGroups = [...teamsByGroup.entries()]
+    .sort(([leftGroupName], [rightGroupName]) => groupNameSorter.compare(leftGroupName, rightGroupName))
+    .map(([groupName, teams]) => {
+      const prediction = tablePredictionByGroup.get(groupName);
+      return {
+        groupName,
+        teams,
+        rankedTeamIds: prediction?.ranked_team_ids ?? null,
+        thirdPlaceAdvances: prediction?.third_place_advances ?? false,
+        points: prediction?.points ?? null
+      };
+    });
 
   return (
     <>

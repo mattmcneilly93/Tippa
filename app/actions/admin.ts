@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
+import { requireAppUser } from "@/lib/dev-auth";
 import { syncTournament } from "@/lib/tournaments/sync";
 import { recalculateScoresForGroup } from "@/lib/tournaments/sync-scores";
 
@@ -20,11 +20,7 @@ const syncSchema = z.object({
 });
 
 async function requireGroupAdmin(groupId: string) {
-  const supabase = await createClient();
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
+  const { supabase, user } = await requireAppUser();
 
   const { data: member, error } = await supabase
     .from("group_members")

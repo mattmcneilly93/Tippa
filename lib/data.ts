@@ -1,15 +1,10 @@
 import { cache } from "react";
-import { redirect } from "next/navigation";
-import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/server";
 import { createInviteCode } from "@/lib/utils";
+import { requireAppUser } from "@/lib/dev-auth";
 
 export const requireUser = cache(async function requireUser() {
-  const supabase = await createClient();
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-  return { supabase, user };
+  return requireAppUser();
 });
 
 export const getGroupContext = cache(async function getGroupContext(groupId: string) {

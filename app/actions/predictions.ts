@@ -1,9 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { requireAppUser } from "@/lib/dev-auth";
 import {
   calculateExactScoreResult,
   calculateOutcomePoints,
@@ -44,12 +44,7 @@ const copyPredictionsSchema = z.object({
 });
 
 async function requireUser() {
-  const supabase = await createClient();
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-  return { supabase, user };
+  return requireAppUser();
 }
 
 async function getGroupTournament(supabase: SupabaseClient, groupId: string) {

@@ -1,9 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
+import { requireAppUser } from "@/lib/dev-auth";
 
 const schema = z.object({
   displayName: z.string().trim().min(2).max(40)
@@ -17,11 +16,7 @@ export async function updateProfile(formData: FormData) {
   const parsed = schema.parse({
     displayName: formData.get("displayName")
   });
-  const supabase = await createClient();
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const { supabase, user } = await requireAppUser();
 
   const { error } = await supabase.from("profiles").upsert({
     id: user.id,
@@ -37,11 +32,7 @@ export async function updateGroupDisplayName(formData: FormData) {
     groupId: formData.get("groupId"),
     displayName: formData.get("displayName")
   });
-  const supabase = await createClient();
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const { supabase, user } = await requireAppUser();
 
   const { error } = await supabase
     .from("group_members")

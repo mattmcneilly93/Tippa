@@ -40,9 +40,7 @@ export function createServiceClient() {
 }
 
 export async function getUser() {
-  const supabase = await createClient();
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
+  const { getOptionalAppUser } = await import("@/lib/dev-auth");
+  const { user } = await getOptionalAppUser();
   return user;
 }

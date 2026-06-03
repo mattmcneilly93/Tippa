@@ -11,6 +11,13 @@ export const metadata: Metadata = {
   description: "Private football prediction pools for friends, families, and teams.",
   applicationName: "Tippa",
   manifest: "/manifest.webmanifest",
+  icons: {
+    icon: [
+      { url: "/icons/logo_192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/logo_512.png", sizes: "512x512", type: "image/png" }
+    ],
+    apple: [{ url: "/icons/logo_192.png", sizes: "192x192", type: "image/png" }]
+  },
   appleWebApp: {
     capable: true,
     title: "Tippa",

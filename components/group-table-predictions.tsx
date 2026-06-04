@@ -168,7 +168,7 @@ export function GroupTablePredictions({
           const thirdAdvances = thirdPlaceAdvances[group.groupName] ?? false;
 
           return (
-            <section key={group.groupName} className="rounded-3xl border bg-background p-3 shadow-sm">
+            <section key={group.groupName} className="min-w-0 rounded-3xl border bg-background p-3 shadow-sm">
               <div className="mb-3 flex items-center justify-between gap-3 px-1">
                 <div>
                   <h2 className="text-lg font-black">{group.groupName}</h2>
@@ -184,13 +184,11 @@ export function GroupTablePredictions({
                   type="button"
                   variant={thirdAdvances ? "default" : "outline"}
                   size="sm"
-                  className="mb-3 w-full"
+                  className="mb-3 h-auto min-h-9 w-full whitespace-normal px-3 py-2 text-center leading-tight"
                   disabled={locked || (!thirdAdvances && selectedThirds >= maxThirdPlaceAdvancers)}
                   onClick={() => toggleThirdPlace(group.groupName)}
                 >
-                  {thirdAdvances
-                    ? "3rd-place team advances from this group"
-                    : "Mark this group's 3rd-place team as advancing"}
+                  {thirdAdvances ? "3rd place advances" : "Mark 3rd place"}
                 </Button>
               ) : null}
 
@@ -233,15 +231,6 @@ export function GroupTablePredictions({
                           {team.flag}
                         </span>
                         <span className="truncate font-bold">{team.name}</span>
-                        {directAdvancer ? (
-                          <Badge variant="outline" className="hidden shrink-0 bg-background/70 sm:inline-flex">
-                            Through
-                          </Badge>
-                        ) : thirdPlaceAdvancer ? (
-                          <Badge variant="outline" className="hidden shrink-0 bg-background/70 sm:inline-flex">
-                            3rd through
-                          </Badge>
-                        ) : null}
                       </div>
                       <div className="flex items-center gap-1">
                         <Button

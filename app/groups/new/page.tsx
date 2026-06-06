@@ -12,7 +12,7 @@ export default function NewGroupPage() {
   return (
     <main className="page-shell">
       <Card className="mx-auto max-w-2xl">
-        <CardHeader className="poster-pattern">
+        <CardHeader>
           <CardTitle className="text-3xl">Create a private pool</CardTitle>
         </CardHeader>
         <CardContent>

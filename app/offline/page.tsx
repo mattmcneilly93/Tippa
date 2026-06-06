@@ -10,7 +10,7 @@ export default function OfflinePage() {
           <CardTitle>You are offline</CardTitle>
         </CardHeader>
         <CardContent className="text-muted-foreground">
-          Tippa can show the saved shell, but predictions need a connection so kickoff
+          mundial can show the saved shell, but predictions need a connection so kickoff
           locks and scores stay fair.
         </CardContent>
       </Card>

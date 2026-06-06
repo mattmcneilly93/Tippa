@@ -18,7 +18,7 @@ export function Leaderboard({ rows }: { rows: LeaderboardRow[] }) {
     <div className="space-y-3">
       {rows.map((row, index) => (
         <motion.div layout key={row.userId} transition={{ type: "spring", stiffness: 420, damping: 34 }}>
-          <Card className={index === 0 ? "border-[var(--tippa-accent)] bg-[#fff7dd]" : ""}>
+          <Card className={index === 0 ? "border-primary bg-accent" : ""}>
             <CardContent className="flex items-center gap-3 p-4">
               <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary text-primary-foreground font-black">
                 {index === 0 ? <Trophy className="h-5 w-5" /> : index + 1}

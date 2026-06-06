@@ -11,7 +11,7 @@ export function EmptyState({
   action?: React.ReactNode;
 }) {
   return (
-    <Card className="poster-pattern">
+    <Card>
       <CardHeader>
         <Trophy className="h-9 w-9 text-[var(--tippa-secondary)]" />
         <CardTitle>{title}</CardTitle>

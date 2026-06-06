@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { PullToRefresh } from "@/components/pull-to-refresh";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import { signOut } from "@/app/actions/auth";
-import Image from "next/image";
+import { Wordmark } from "@/components/wordmark";
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const user = await getUser();
@@ -13,19 +13,13 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     <>
       <ServiceWorkerRegister />
       <PullToRefresh />
-      <header className="sticky top-0 z-30 border-b bg-[#fffaf0]/85 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-3">
-          <Link href={user ? "/dashboard" : "/"} className="flex items-center gap-2">
-            <Image
-              src="/icons/logo_transparent.webp"
-              alt="Tippa logo"
-              height={192}
-              width={192}
-              className="h-10 w-10 bg-transparent"
-            />
-            <span className="text-xl font-black">Tippa</span>
+      <header className="sticky top-0 z-30 border-b bg-background/85 backdrop-blur">
+        <div className="mx-auto grid w-full max-w-6xl grid-cols-[1fr_auto_1fr] items-center px-4 py-3">
+          <div aria-hidden />
+          <Link href={user ? "/dashboard" : "/"} className="justify-self-center text-base">
+            <Wordmark />
           </Link>
-          <nav className="flex items-center gap-2">
+          <nav className="flex items-center justify-end gap-2">
             {user ? (
               <>
                 <Button asChild variant="ghost" size="sm">

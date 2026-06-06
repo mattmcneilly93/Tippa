@@ -36,7 +36,7 @@ export function DashboardActions({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Join a group</DialogTitle>
-            <DialogDescription>Enter an invite code from another Tippa pool.</DialogDescription>
+            <DialogDescription>Enter an invite code from another mundial pool.</DialogDescription>
           </DialogHeader>
           <form action={joinAction} className="space-y-4">
             <div className="space-y-2">

@@ -24,7 +24,7 @@ export default async function InvitePage({
     <main className="page-shell flex min-h-[75vh] items-center">
       <Card className="mx-auto w-full max-w-md">
         <CardHeader>
-          <CardTitle>Join a Tippa group</CardTitle>
+          <CardTitle>Join a mundial pool</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {!invite ? (

@@ -85,7 +85,7 @@ export function MatchCard({
               prediction={match.prediction}
             />
             {match.prediction ? (
-              <span className="flex items-center gap-1 rounded-full bg-[#fff4d6] px-3 py-2 text-sm font-black">
+              <span className="flex items-center gap-1 rounded-full bg-accent px-3 py-2 text-sm font-black">
                 <Sparkles className="h-4 w-4" />
                 {match.prediction.points}
               </span>

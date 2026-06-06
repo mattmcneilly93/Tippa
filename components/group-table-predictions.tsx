@@ -137,14 +137,14 @@ export function GroupTablePredictions({
             "rounded-2xl border px-4 py-3 text-sm",
             missingThirds > 0
               ? "border-[var(--tippa-accent)] bg-[var(--tippa-accent)]/20"
-              : "border-emerald-200 bg-emerald-50"
+              : "border-primary/30 bg-accent"
           )}
         >
           <div className="flex gap-3">
             {missingThirds > 0 ? (
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--tippa-primary)]" aria-hidden="true" />
             ) : (
-              <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" aria-hidden="true" />
+              <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
             )}
             <div className="space-y-1">
               <p className="font-black">
@@ -220,8 +220,8 @@ export function GroupTablePredictions({
                       }}
                       className={cn(
                         "grid grid-cols-[2.5rem_1fr_auto] items-center gap-3 rounded-2xl border px-3 py-2 shadow-sm transition hover:border-primary/40",
-                        directAdvancer && "border-emerald-200 bg-emerald-50/80",
-                        thirdPlaceAdvancer && "border-sky-200 bg-sky-50/90",
+                        directAdvancer && "border-primary/20 bg-accent",
+                        thirdPlaceAdvancer && "border-primary/40 bg-primary/10",
                         !directAdvancer && !thirdPlaceAdvancer && "bg-card"
                       )}
                     >

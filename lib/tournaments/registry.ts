@@ -9,12 +9,12 @@ export const supportedTournaments: SupportedTournament[] = [
     source: "openfootball",
     isSupported: true,
     theme: {
-      primary: "#101827",
-      secondary: "#E63946",
-      accent: "#F7C948",
-      background: "#F7F3EA",
+      primary: "#002FA7",
+      secondary: "#002FA7",
+      accent: "#EAEEFB",
+      background: "#FFFFFF",
       surface: "#FFFFFF",
-      text: "#101827",
+      text: "#121212",
       pattern: "north-america-soft"
     }
   }

@@ -96,7 +96,7 @@ export function PrizeCard({
           </p>
         ) : null}
         {group.payout_description ? (
-          <p className="rounded-2xl bg-[#fff4d6] p-3 text-sm">{group.payout_description}</p>
+          <p className="rounded-2xl bg-accent p-3 text-sm">{group.payout_description}</p>
         ) : null}
       </CardContent>
     </Card>

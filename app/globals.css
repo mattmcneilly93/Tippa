@@ -20,33 +20,34 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-sans: var(--font-jost), "Jost", ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Futura", "Century Gothic", sans-serif;
 }
 
 :root {
-  --background: #f7f3ea;
-  --foreground: #101827;
-  --card: #fffaf0;
-  --card-foreground: #101827;
+  /* mmmagasin theme — flat white, near-black ink, Klein Blue accent */
+  --background: #ffffff;
+  --foreground: #121212;
+  --card: #ffffff;
+  --card-foreground: #121212;
   --popover: #ffffff;
-  --popover-foreground: #101827;
-  --primary: #101827;
-  --primary-foreground: #fffaf0;
-  --secondary: #e63946;
-  --secondary-foreground: #fffaf0;
-  --muted: #ece4d7;
-  --muted-foreground: #655f55;
-  --accent: #8ecae6;
-  --accent-foreground: #101827;
-  --destructive: #b42318;
-  --destructive-foreground: #fffaf0;
-  --border: #e0d4c3;
-  --input: #d8cbb8;
-  --ring: #8ecae6;
-  --tippa-primary: #101827;
-  --tippa-secondary: #e63946;
-  --tippa-accent: #f7c948;
-  --tippa-sky: #8ecae6;
+  --popover-foreground: #121212;
+  --primary: #002fa7; /* Klein Blue */
+  --primary-foreground: #ffffff;
+  --secondary: #f3f4f6;
+  --secondary-foreground: #121212;
+  --muted: #f4f4f5;
+  --muted-foreground: #6b6b6b;
+  --accent: #eaeefb; /* pale Klein-blue tint for hover/highlight surfaces */
+  --accent-foreground: #002fa7;
+  --destructive: #b42318; /* red — errors / destructive only */
+  --destructive-foreground: #ffffff;
+  --border: #e5e5e5;
+  --input: #e0e0e0;
+  --ring: #002fa7;
+  --tippa-primary: #121212;
+  --tippa-secondary: #002fa7;
+  --tippa-accent: #eaeefb; /* pale Klein-blue chip fill (keeps dark text readable) */
+  --tippa-sky: #002fa7;
   --tippa-surface: #ffffff;
 }
 
@@ -61,10 +62,7 @@ html {
 
 body {
   min-height: 100vh;
-  background:
-    radial-gradient(circle at top left, rgba(142, 202, 230, 0.45), transparent 32rem),
-    radial-gradient(circle at 80% 10%, rgba(247, 201, 72, 0.35), transparent 24rem),
-    linear-gradient(180deg, #f7f3ea 0%, #fffaf0 100%);
+  background: var(--background);
   color: var(--foreground);
 }
 

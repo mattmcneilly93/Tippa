@@ -36,7 +36,7 @@ export function GroupCard({ group, index }: { group: GroupCardData; index: numbe
     >
       <Link href={`/groups/${group.id}`}>
         <Card className="h-full overflow-hidden transition-transform hover:-translate-y-1">
-          <CardHeader className="poster-pattern">
+          <CardHeader>
             <div className="flex items-start justify-between gap-3">
               <div>
                 <Badge variant="warm">{tournament?.name ?? "Tournament"}</Badge>

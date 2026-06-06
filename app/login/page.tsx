@@ -25,7 +25,7 @@ async function LoginCard({
     <main className="page-shell flex min-h-[75vh] items-center">
       <Card className="mx-auto w-full max-w-md">
         <CardHeader>
-          <CardTitle>Log in to Tippa</CardTitle>
+          <CardTitle>Log in to mundial</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <form action={signInWithOAuth}>

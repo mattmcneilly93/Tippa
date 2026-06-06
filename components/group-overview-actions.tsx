@@ -109,7 +109,7 @@ export function GroupOverviewActions({
           <DialogContent className="max-w-lg">
             <DialogHeader>
               <DialogTitle>Payments</DialogTitle>
-              <DialogDescription>Track who has paid for this pool outside Tippa.</DialogDescription>
+              <DialogDescription>Track who has paid for this pool outside mundial.</DialogDescription>
             </DialogHeader>
             <div className="space-y-2">
               {members.map((member) => (

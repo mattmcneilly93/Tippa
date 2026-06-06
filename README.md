@@ -100,6 +100,60 @@ http://localhost:3000
 
 The dev script uses Webpack because this project hit a Turbopack proxy issue during local development.
 
+### Testing on a Phone (ngrok tunnel)
+
+`localhost` only works on the machine running the dev server, and magic-link
+auth needs a stable, same-origin HTTPS URL to complete the PKCE flow. The
+simplest way to test on a real phone is to expose the local dev server through
+an [ngrok](https://ngrok.com) tunnel with a **static domain** (one free static
+domain per account), so the callback URL never changes.
+
+1. Sign in to ngrok and grab your reserved domain from
+   [the dashboard](https://dashboard.ngrok.com/domains) (looks like
+   `your-id.ngrok-free.app`), then authenticate the agent once:
+
+   ```bash
+   ngrok config add-authtoken <your-token>
+   ```
+
+2. Allow the tunnel host to load dev resources. In `next.config.ts`, add your
+   domain to `allowedDevOrigins`:
+
+   ```ts
+   const nextConfig: NextConfig = {
+     allowedDevOrigins: ["your-id.ngrok-free.app"]
+   };
+   ```
+
+3. Point the app's canonical URL at the tunnel in `.env.development`:
+
+   ```bash
+   NEXT_PUBLIC_SITE_URL=https://your-id.ngrok-free.app
+   ```
+
+4. In Supabase Auth → URL Configuration, set the **Site URL** to
+   `https://your-id.ngrok-free.app` and add the callback to **Redirect URLs**:
+
+   ```txt
+   https://your-id.ngrok-free.app/auth/callback
+   ```
+
+5. Start the dev server, then the tunnel (in a second terminal):
+
+   ```bash
+   npm run dev
+   ngrok http --url=https://your-id.ngrok-free.app 3000
+   ```
+
+6. On the phone, open `https://your-id.ngrok-free.app` in the browser, request a
+   magic link, and open the emailed link **in the same browser** so the PKCE
+   code verifier cookie matches.
+
+The auth callback resolves its redirect origin from the `x-forwarded-host`
+header, so logins completed through the tunnel return to the public URL rather
+than `localhost`. When you go back to plain local development, revert
+`NEXT_PUBLIC_SITE_URL` to `http://localhost:3000`.
+
 ## Supabase Setup
 
 1. Create a Supabase project.

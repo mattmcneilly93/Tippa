@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Trophy } from "lucide-react";
 import { getUser } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { PullToRefresh } from "@/components/pull-to-refresh";

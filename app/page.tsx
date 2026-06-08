@@ -24,12 +24,9 @@ export default function HomePage() {
           </p>
           <div className="flex flex-col gap-3 sm:flex-row">
             <Button asChild size="lg">
-              <Link href="/groups/new">
-                Create a pool <ArrowRight className="h-5 w-5" />
+              <Link href="/dashboard">
+                Join with code <ArrowRight className="h-5 w-5" />
               </Link>
-            </Button>
-            <Button asChild variant="outline" size="lg">
-              <Link href="/dashboard">Join with code</Link>
             </Button>
           </div>
           <InstallAppButton />

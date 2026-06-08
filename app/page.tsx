@@ -10,7 +10,7 @@ export default function HomePage() {
     <main className="page-shell">
       <section className="flex min-h-[calc(100vh-5rem)] flex-col items-center justify-center gap-8 py-8 text-center">
         <h1 className="bg-gradient-to-r from-[#002fa7] via-[#2f6bff] to-[#7db4ff] bg-clip-text text-8xl font-black leading-[0.9] tracking-tight text-transparent md:text-[12rem]">
-          mundial
+          mmmmundial
         </h1>
         <p className="max-w-xl text-xl text-muted-foreground">
           Make a private World Cup prediction game for friends, families, or teams,

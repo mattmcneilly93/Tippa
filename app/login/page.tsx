@@ -35,13 +35,6 @@ async function LoginCard({
               Continue with Google
             </Button>
           </form>
-          <form action={signInWithOAuth}>
-            <input type="hidden" name="provider" value="apple" />
-            <input type="hidden" name="next" value={next} />
-            <Button className="w-full" type="submit" variant="outline">
-              Continue with Apple
-            </Button>
-          </form>
           <form action={signInWithMagicLink} className="space-y-3 rounded-3xl bg-muted p-4">
             <input type="hidden" name="next" value={next} />
             <Label htmlFor="email">Email magic link</Label>

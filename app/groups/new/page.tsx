@@ -1,4 +1,6 @@
+import { redirect } from "next/navigation";
 import { createGroup } from "@/app/actions/groups";
+import { requireUser } from "@/lib/data";
 import { supportedTournaments } from "@/lib/tournaments/registry";
 import { PrizeSettingsFields } from "@/components/prize-settings-fields";
 import { ScoringSettingsFields } from "@/components/scoring-settings-fields";
@@ -8,7 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-export default function NewGroupPage() {
+export default async function NewGroupPage() {
+  const { user } = await requireUser();
+  if (user.email !== process.env.ADMIN_EMAIL) redirect("/dashboard");
   return (
     <main className="page-shell">
       <Card className="mx-auto max-w-2xl">

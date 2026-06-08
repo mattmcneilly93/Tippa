@@ -8,6 +8,7 @@ import { getDashboardData } from "@/lib/data";
 
 export default async function DashboardPage() {
   const { user, profile, cards } = await getDashboardData();
+  const isSiteAdmin = user.email === process.env.ADMIN_EMAIL;
 
   return (
     <main className="page-shell space-y-6">
@@ -20,11 +21,13 @@ export default async function DashboardPage() {
           <DashboardActions
             defaultDisplayName={profile?.display_name ?? user.email?.split("@")[0] ?? ""}
           />
-          <Button asChild>
-            <Link href="/groups/new">
-              <Plus className="h-4 w-4" /> New group
-            </Link>
-          </Button>
+          {isSiteAdmin && (
+            <Button asChild>
+              <Link href="/groups/new">
+                <Plus className="h-4 w-4" /> New group
+              </Link>
+            </Button>
+          )}
         </div>
       </section>
 
@@ -37,12 +40,7 @@ export default async function DashboardPage() {
       ) : (
         <EmptyState
           title="No groups yet"
-          description="Create a private pool or join one with an invite code."
-          action={
-            <Button asChild>
-              <Link href="/groups/new">Create a pool</Link>
-            </Button>
-          }
+          description="Join a pool with an invite code."
         />
       )}
     </main>

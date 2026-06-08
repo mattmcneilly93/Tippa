@@ -13,8 +13,7 @@ export default function HomePage() {
           mmmmundial
         </h1>
         <p className="max-w-xl text-xl text-muted-foreground">
-          Make a private World Cup prediction game for friends, families, or teams,
-          share a code, and watch the table move after every result.
+          mr + mrs m magasin invites you to get stoked about the 2026 World Cup, the invite code is mmmmundial
         </p>
         <div className="flex flex-col gap-3 sm:flex-row">
           <Button asChild size="lg">

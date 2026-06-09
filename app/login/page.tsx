@@ -35,6 +35,13 @@ async function LoginCard({
               Continue with Google
             </Button>
           </form>
+          <p className="text-center text-xs text-muted-foreground">Recommended — fastest way to sign in</p>
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-2 text-muted-foreground">or</span>
+            </div>
+          </div>
           <form action={signInWithMagicLink} className="space-y-3 rounded-3xl bg-muted p-4">
             <input type="hidden" name="next" value={next} />
             <Label htmlFor="email">Email magic link</Label>

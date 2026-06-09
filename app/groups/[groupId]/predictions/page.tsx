@@ -134,6 +134,16 @@ export default async function PredictionsPage({
 
   return (
     <>
+      <style>{`@keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+      <div className="flex justify-center py-4">
+        <img
+          src="/mascot.png"
+          alt="mmmmundial mascot"
+          width={120}
+          height={120}
+          style={{ animation: "spin-slow 2s linear infinite" }}
+        />
+      </div>
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between gap-3">

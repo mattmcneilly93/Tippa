@@ -33,7 +33,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
               </>
             ) : (
               <Button asChild size="sm">
-                <Link href="/login">Log in</Link>
+                <Link href="/login">Login / Sign Up</Link>
               </Button>
             )}
           </nav>

@@ -141,7 +141,7 @@ export default async function PredictionsPage({
           alt="mmmmundial mascot"
           width={120}
           height={120}
-          style={{ animation: "spin-slow 2s linear infinite" }}
+          style={{ animation: "spin-slow 3s linear infinite" }}
         />
       </div>
       <Card>

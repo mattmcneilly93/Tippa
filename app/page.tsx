@@ -8,22 +8,12 @@ import { InstallAppButton } from "@/components/install-app-button";
 export default function HomePage() {
   return (
     <main className="page-shell">
-      <section className="relative flex min-h-[calc(100vh-5rem)] flex-col items-center justify-center gap-8 overflow-hidden py-8 text-center">
-
-        {/* Background goalkeeper image */}
-        <div
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-          style={{ backgroundImage: "url('/image-1780952368109.webp')" }}
-        />
-        {/* Dark overlay so text stays readable */}
-        <div className="absolute inset-0 bg-black/30" />
-
-        {/* Content */}
-        <div className="relative z-10 flex flex-col items-center gap-8">
+      <section className="flex min-h-[calc(100vh-5rem)] flex-col items-center justify-center gap-8 py-8 text-center">
+        <div className="flex flex-col items-center gap-8">
           <h1 className="bg-gradient-to-r from-[#002fa7] via-[#2f6bff] to-[#7db4ff] bg-clip-text text-8xl font-black leading-[0.9] tracking-tight text-transparent md:text-[12rem]">
             mmmmundial
           </h1>
-          <p className="max-w-xl text-xl text-white/90">
+          <p className="max-w-xl text-xl text-muted-foreground">
             mr + mrs m magasin invites you to get stoked about the 2026 World Cup, the invite code is mmmmundial
           </p>
           <div className="flex flex-col gap-3 sm:flex-row">

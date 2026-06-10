@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Trophy } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { motion } from "@/components/motion";
@@ -11,6 +12,7 @@ export type LeaderboardRow = {
   groupStagePoints: number;
   knockoutPoints: number;
   championCorrect: number;
+  href?: string;
 };
 
 export function Leaderboard({ rows }: { rows: LeaderboardRow[] }) {
@@ -24,7 +26,13 @@ export function Leaderboard({ rows }: { rows: LeaderboardRow[] }) {
                 {index === 0 ? <Trophy className="h-5 w-5" /> : index + 1}
               </span>
               <div className="min-w-0 flex-1">
-                <p className="truncate font-black">{row.displayName}</p>
+                {row.href ? (
+                  <Link href={row.href} className="truncate font-black hover:underline">
+                    {row.displayName}
+                  </Link>
+                ) : (
+                  <p className="truncate font-black">{row.displayName}</p>
+                )}
                 <p className="text-xs text-muted-foreground">
                   Group {row.groupStagePoints} · Knockout {row.knockoutPoints}
                 </p>

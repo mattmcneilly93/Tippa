@@ -112,6 +112,59 @@ export const getPredictionPageData = cache(async function getPredictionPageData(
   };
 });
 
+export const getMemberPredictionData = cache(async function getMemberPredictionData(groupId: string, memberId: string) {
+  const { supabase, group } = await getGroupContext(groupId);
+
+  const [
+    { data: matches },
+    { data: tablePredictions },
+    { data: matchPredictions },
+    { data: knockoutPredictions },
+    { data: memberProfile }
+  ] = await Promise.all([
+    supabase
+      .from("matches")
+      .select("*")
+      .eq("tournament_id", group.tournament_id)
+      .order("round_order", { ascending: true })
+      .order("kickoff_time", { ascending: true, nullsFirst: false }),
+    supabase
+      .from("group_table_predictions")
+      .select("group_name,ranked_team_ids,third_place_advances,points")
+      .eq("group_id", groupId)
+      .eq("user_id", memberId),
+    supabase
+      .from("match_predictions")
+      .select("match_id,predicted_outcome,home_score,away_score,points")
+      .eq("group_id", groupId)
+      .eq("user_id", memberId),
+    supabase
+      .from("knockout_prediction_entries")
+      .select("round_key,slot_index,source_match_id,predicted_team_id,points")
+      .eq("group_id", groupId)
+      .eq("user_id", memberId),
+    supabase
+      .from("group_members")
+      .select("display_name,profiles(display_name)")
+      .eq("group_id", groupId)
+      .eq("user_id", memberId)
+      .maybeSingle()
+  ]);
+
+  const displayName =
+    memberProfile?.display_name ||
+    (memberProfile?.profiles as { display_name?: string } | null)?.display_name ||
+    "Member";
+
+  return {
+    matches: matches ?? [],
+    tablePredictions: tablePredictions ?? [],
+    matchPredictions: matchPredictions ?? [],
+    knockoutPredictions: knockoutPredictions ?? [],
+    displayName
+  };
+});
+
 export const getAdminPageData = cache(async function getAdminPageData(groupId: string) {
   const { supabase, group } = await getGroupContext(groupId);
   const [{ data: matches }, { data: firstGroup }, { data: firstKnockout }] = await Promise.all([

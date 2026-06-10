@@ -13,6 +13,13 @@ export default async function LeaderboardPage({
   const { tablePredictions, matchPredictions, knockoutPredictions } =
     await getGroupLeaderboardPredictionData(groupId);
 
+  const rows = buildLeaderboard({
+    members: members as never,
+    tablePredictions: tablePredictions as never,
+    matchPredictions: matchPredictions as never,
+    knockoutPredictions: knockoutPredictions as never
+  });
+
   return (
     <>
       <Card>
@@ -21,12 +28,10 @@ export default async function LeaderboardPage({
         </CardHeader>
         <CardContent>
           <Leaderboard
-            rows={buildLeaderboard({
-              members: members as never,
-              tablePredictions: tablePredictions as never,
-              matchPredictions: matchPredictions as never,
-              knockoutPredictions: knockoutPredictions as never
-            })}
+            rows={rows.map((row) => ({
+              ...row,
+              href: `/groups/${groupId}/members/${row.userId}`
+            }))}
           />
         </CardContent>
       </Card>

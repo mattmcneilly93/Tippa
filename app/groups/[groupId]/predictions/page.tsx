@@ -43,6 +43,15 @@ function settingsFor(group: { group_prediction_settings?: unknown }) {
         include_third_place: boolean;
         knockout_opened_at: string | null;
         knockout_locked_at: string | null;
+        table_exact_position_points: number;
+        table_advancing_status_points: number;
+        table_group_winner_bonus: number;
+        knockout_round_of_32_points: number;
+        knockout_round_of_16_points: number;
+        knockout_quarter_final_points: number;
+        knockout_semi_final_points: number;
+        knockout_champion_points: number;
+        knockout_third_place_points: number;
       }
     | null
     | undefined;
@@ -69,6 +78,15 @@ export default async function PredictionsPage({
     knockout_prediction_mode: "winner_bracket",
     include_third_place: false,
     knockout_opened_at: null,
+    table_exact_position_points: 3,
+    table_advancing_status_points: 1,
+    table_group_winner_bonus: 2,
+    knockout_round_of_32_points: 2,
+    knockout_round_of_16_points: 3,
+    knockout_quarter_final_points: 5,
+    knockout_semi_final_points: 8,
+    knockout_champion_points: 13,
+    knockout_third_place_points: 3,
     knockout_locked_at: null
   };
   const tournament = Array.isArray(group.tournaments) ? group.tournaments[0] : group.tournaments;
@@ -147,6 +165,37 @@ export default async function PredictionsPage({
           />
         ))}
       </div>
+
+      <details className="group rounded-3xl border bg-card px-5 py-4 text-sm">
+        <summary className="cursor-pointer font-semibold list-none flex items-center justify-between">
+          <span>How points work</span>
+          <span className="text-muted-foreground transition-transform group-open:rotate-180">▾</span>
+        </summary>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div>
+            <p className="mb-2 font-black text-xs uppercase tracking-wide text-muted-foreground">Group stage</p>
+            <ul className="space-y-1">
+              <li className="flex justify-between"><span>Exact group position</span><span className="font-black">{settings.table_exact_position_points ?? 3} pts</span></li>
+              <li className="flex justify-between"><span>Team advances correctly</span><span className="font-black">{settings.table_advancing_status_points ?? 1} pt</span></li>
+              <li className="flex justify-between"><span>Group winner bonus</span><span className="font-black">{settings.table_group_winner_bonus ?? 2} pts</span></li>
+            </ul>
+          </div>
+          <div>
+            <p className="mb-2 font-black text-xs uppercase tracking-wide text-muted-foreground">Knockout rounds</p>
+            <ul className="space-y-1">
+              <li className="flex justify-between"><span>Round of 32 winner</span><span className="font-black">{settings.knockout_round_of_32_points ?? 2} pts</span></li>
+              <li className="flex justify-between"><span>Round of 16 winner</span><span className="font-black">{settings.knockout_round_of_16_points ?? 3} pts</span></li>
+              <li className="flex justify-between"><span>Quarterfinal winner</span><span className="font-black">{settings.knockout_quarter_final_points ?? 5} pts</span></li>
+              <li className="flex justify-between"><span>Semifinal winner</span><span className="font-black">{settings.knockout_semi_final_points ?? 8} pts</span></li>
+              <li className="flex justify-between"><span>Champion 🏆</span><span className="font-black">{settings.knockout_champion_points ?? 13} pts</span></li>
+              {settings.include_third_place && (
+                <li className="flex justify-between"><span>Third-place winner</span><span className="font-black">{settings.knockout_third_place_points ?? 3} pts</span></li>
+              )}
+            </ul>
+          </div>
+        </div>
+      </details>
+
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between gap-3">

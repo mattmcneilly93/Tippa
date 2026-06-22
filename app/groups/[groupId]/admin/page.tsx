@@ -54,7 +54,7 @@ export default async function AdminPage({ params }: { params: Promise<{ groupId:
             </p>
             {firstKnockout?.kickoff_time ? (
               <p className="text-sm text-muted-foreground">
-                Locks {dateFormat.format((firstKnockout.kickoff_time))}
+                Locks {dateFormat.format(new Date(firstKnockout.kickoff_time))}
               </p>
             ) : null}
           </div>

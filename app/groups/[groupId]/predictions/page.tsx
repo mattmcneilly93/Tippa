@@ -199,6 +199,52 @@ export default async function PredictionsPage({
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between gap-3">
+            <CardTitle>Knockout bracket</CardTitle>
+            <Badge variant={settings.knockout_opened_at && !knockoutLocked ? "warm" : "secondary"}>
+              {!settings.knockout_opened_at ? "Not open" : knockoutLocked ? "Locked" : "Open"}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {!settings.knockout_opened_at ? (
+            <EmptyState
+              title="Knockout predictions are not open yet"
+              description="An admin opens the bracket after group play when the knockout fixtures are known."
+            />
+          ) : knockoutMatches.length ? (
+            settings.knockout_prediction_mode === "exact_score" ? (
+              <ExactScoreMode
+                groupId={groupId}
+                locked={knockoutLocked}
+                matches={
+                  settings.include_third_place
+                    ? knockoutMatches
+                    : knockoutMatches.filter((match) => match.round_key !== "third_place")
+                }
+                predictionByMatch={matchPredictionByMatch}
+                phase="knockout"
+              />
+            ) : (
+              <KnockoutMode
+                groupId={groupId}
+                locked={knockoutLocked}
+                includeThirdPlace={settings.include_third_place}
+                matches={knockoutMatches}
+                predictionByMatch={knockoutPredictionByMatch}
+              />
+            )
+          ) : (
+            <EmptyState
+              title="No knockout fixtures yet"
+              description="Sync the tournament after group play to load the bracket."
+            />
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between gap-3">
             <CardTitle>Group stage</CardTitle>
             <Badge variant={groupLocked ? "secondary" : "warm"}>
               {groupLocked ? "Locked" : "Open until first kickoff"}
@@ -239,52 +285,6 @@ export default async function PredictionsPage({
               locked={groupLocked}
               matches={groupMatches}
               predictionByMatch={matchPredictionByMatch}
-            />
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between gap-3">
-            <CardTitle>Knockout bracket</CardTitle>
-            <Badge variant={settings.knockout_opened_at && !knockoutLocked ? "warm" : "secondary"}>
-              {!settings.knockout_opened_at ? "Not open" : knockoutLocked ? "Locked" : "Open"}
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {!settings.knockout_opened_at ? (
-            <EmptyState
-              title="Knockout predictions are not open yet"
-              description="An admin opens the bracket after group play when the knockout fixtures are known."
-            />
-          ) : knockoutMatches.length ? (
-            settings.knockout_prediction_mode === "exact_score" ? (
-              <ExactScoreMode
-                groupId={groupId}
-                locked={knockoutLocked}
-                matches={
-                  settings.include_third_place
-                    ? knockoutMatches
-                    : knockoutMatches.filter((match) => match.round_key !== "third_place")
-                }
-                predictionByMatch={matchPredictionByMatch}
-                phase="knockout"
-              />
-            ) : (
-              <KnockoutMode
-                groupId={groupId}
-                locked={knockoutLocked}
-                includeThirdPlace={settings.include_third_place}
-                matches={knockoutMatches}
-                predictionByMatch={knockoutPredictionByMatch}
-              />
-            )
-          ) : (
-            <EmptyState
-              title="No knockout fixtures yet"
-              description="Sync the tournament after group play to load the bracket."
             />
           )}
         </CardContent>

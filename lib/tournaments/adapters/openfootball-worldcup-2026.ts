@@ -58,9 +58,7 @@ function classifyRound(match: OpenFootballMatch): Pick<NormalizedMatch, "stageTy
   if (label.includes("third")) {
     return { stageType: "knockout", roundKey: "third_place", roundOrder: 5 };
   }
-  if (label.includes("final")) {
-    return { stageType: "knockout", roundKey: "final", roundOrder: 6 };
-  }
+  // Check "semi"/"quarter" before the generic "final" — both labels contain "final".
   if (label.includes("semi")) {
     return { stageType: "knockout", roundKey: "semi_final", roundOrder: 4 };
   }
@@ -72,6 +70,9 @@ function classifyRound(match: OpenFootballMatch): Pick<NormalizedMatch, "stageTy
   }
   if (label.includes("32")) {
     return { stageType: "knockout", roundKey: "round_of_32", roundOrder: 1 };
+  }
+  if (label.includes("final")) {
+    return { stageType: "knockout", roundKey: "final", roundOrder: 6 };
   }
 
   return { stageType: "knockout", roundKey: "round_of_32", roundOrder: 1 };

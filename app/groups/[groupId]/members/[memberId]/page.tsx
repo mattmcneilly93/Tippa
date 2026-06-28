@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 import { getGroupContext, getMemberPredictionData } from "@/lib/data";
 import { flagForTeam } from "@/lib/team-flags";
 import { Badge } from "@/components/ui/badge";
@@ -45,8 +44,7 @@ export default async function MemberPredictionsPage({
     (m) => m.stage_type === "group" && m.kickoff_time
   )?.kickoff_time ?? null;
   const groupLocked = isLockedAt(firstGroupKickoff);
-
-  if (!groupLocked) redirect(`/groups/${groupId}/leaderboard`);
+  const knockoutLocked = isLockedAt(settings?.knockout_locked_at);
 
   const groupMatches = allMatches.filter((m) => m.stage_type === "group");
   const knockoutMatches = allMatches.filter((m) => m.stage_type === "knockout");
@@ -88,8 +86,20 @@ export default async function MemberPredictionsPage({
         <Badge variant="secondary">Read-only</Badge>
       </div>
 
+      {/* Predictions stay hidden until each phase locks, so nobody can copy. */}
+      {!groupLocked && (
+        <Card>
+          <CardHeader><CardTitle>Group stage predictions</CardTitle></CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              Hidden until the group stage locks at the first kickoff.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Group stage table predictions */}
-      {settings?.group_stage_prediction_mode === "table" && (
+      {groupLocked && settings?.group_stage_prediction_mode === "table" && (
         <Card>
           <CardHeader><CardTitle>Group stage rankings</CardTitle></CardHeader>
           <CardContent className="space-y-4">
@@ -128,8 +138,9 @@ export default async function MemberPredictionsPage({
       )}
 
       {/* Match outcome / exact score predictions */}
-      {(settings?.group_stage_prediction_mode === "match_outcome" ||
-        settings?.group_stage_prediction_mode === "exact_score") && (
+      {groupLocked &&
+        (settings?.group_stage_prediction_mode === "match_outcome" ||
+          settings?.group_stage_prediction_mode === "exact_score") && (
         <Card>
           <CardHeader><CardTitle>Group stage predictions</CardTitle></CardHeader>
           <CardContent className="space-y-3">
@@ -162,8 +173,20 @@ export default async function MemberPredictionsPage({
         </Card>
       )}
 
+      {/* Knockout predictions hidden until the knockout phase locks. */}
+      {settings?.knockout_opened_at && !knockoutLocked && (
+        <Card>
+          <CardHeader><CardTitle>Knockout predictions</CardTitle></CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              Hidden until knockout predictions lock.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Knockout predictions */}
-      {settings?.knockout_opened_at && knockoutMatches.length > 0 && (
+      {knockoutLocked && knockoutMatches.length > 0 && (
         <Card>
           <CardHeader><CardTitle>Knockout predictions</CardTitle></CardHeader>
           <CardContent className="space-y-3">

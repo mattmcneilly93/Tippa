@@ -61,6 +61,15 @@ export default async function MemberPredictionsPage({
       .map((p) => [p.source_match_id, p])
   );
 
+  // Points breakdown — where each person's total came from.
+  const groupStagePoints =
+    tablePredictions.reduce((sum, p) => sum + (p.points ?? 0), 0) +
+    groupMatches.reduce((sum, m) => sum + (matchPredictionByMatch.get(m.id)?.points ?? 0), 0);
+  const knockoutPoints =
+    knockoutPredictions.reduce((sum, p) => sum + (p.points ?? 0), 0) +
+    knockoutMatches.reduce((sum, m) => sum + (matchPredictionByMatch.get(m.id)?.points ?? 0), 0);
+  const totalPoints = groupStagePoints + knockoutPoints;
+
   // Build team lists per group
   const teamsByGroup = new Map<string, { id: string; name: string; flag: string }[]>();
   for (const match of groupMatches) {
@@ -85,6 +94,24 @@ export default async function MemberPredictionsPage({
         <h2 className="text-2xl font-black">{displayName}&apos;s predictions</h2>
         <Badge variant="secondary">Read-only</Badge>
       </div>
+
+      <Card>
+        <CardHeader><CardTitle>Points breakdown</CardTitle></CardHeader>
+        <CardContent className="flex flex-wrap items-center gap-x-8 gap-y-3">
+          <div>
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Total</p>
+            <p className="text-3xl font-black">{totalPoints}</p>
+          </div>
+          <div>
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Group stage</p>
+            <p className="text-2xl font-black">{groupStagePoints}</p>
+          </div>
+          <div>
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Knockout</p>
+            <p className="text-2xl font-black">{knockoutPoints}</p>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Predictions stay hidden until each phase locks, so nobody can copy. */}
       {!groupLocked && (
@@ -114,7 +141,12 @@ export default async function MemberPredictionsPage({
 
               return (
                 <div key={groupName} className="rounded-3xl bg-muted p-4">
-                  <p className="mb-2 text-sm font-semibold text-muted-foreground">{groupName}</p>
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-sm font-semibold text-muted-foreground">{groupName}</p>
+                    {prediction ? (
+                      <Badge variant="outline">{prediction.points ?? 0} pts</Badge>
+                    ) : null}
+                  </div>
                   {ranked ? (
                     <ol className="space-y-1">
                       {ranked.map((team: { id: string; name: string; flag: string } | undefined, i: number) =>

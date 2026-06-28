@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getGroupContext, getPredictionPageData } from "@/lib/data";
 import { flagForTeam } from "@/lib/team-flags";
-import { dateFormat } from "@/lib/utils";
+import { dateFormat, isKnockoutMatchLocked, knockoutLockTime } from "@/lib/utils";
 
 type MatchRow = {
   id: string;
@@ -100,7 +100,10 @@ export default async function PredictionsPage({
   const knockoutMatches = allMatches.filter((match) => match.stage_type === "knockout");
   const firstGroupKickoff = groupMatches.find((match) => match.kickoff_time)?.kickoff_time ?? null;
   const groupLocked = isLockedAt(firstGroupKickoff);
-  const knockoutLocked = isLockedAt(settings.knockout_locked_at);
+  // Knockout matches lock individually, an hour before each kickoff. The phase
+  // counts as fully "Locked" only once every knockout match has closed.
+  const allKnockoutLocked =
+    knockoutMatches.length > 0 && knockoutMatches.every((match) => isKnockoutMatchLocked(match.kickoff_time));
   const tablePredictionByGroup = new Map(
     (tablePredictions ?? []).map((prediction) => [prediction.group_name, prediction])
   );
@@ -200,8 +203,8 @@ export default async function PredictionsPage({
         <CardHeader>
           <div className="flex items-center justify-between gap-3">
             <CardTitle>Knockout bracket</CardTitle>
-            <Badge variant={settings.knockout_opened_at && !knockoutLocked ? "warm" : "secondary"}>
-              {!settings.knockout_opened_at ? "Not open" : knockoutLocked ? "Locked" : "Open"}
+            <Badge variant={settings.knockout_opened_at && !allKnockoutLocked ? "warm" : "secondary"}>
+              {!settings.knockout_opened_at ? "Not open" : allKnockoutLocked ? "Locked" : "Open"}
             </Badge>
           </div>
         </CardHeader>
@@ -212,27 +215,32 @@ export default async function PredictionsPage({
               description="An admin opens the bracket after group play when the knockout fixtures are known."
             />
           ) : knockoutMatches.length ? (
-            settings.knockout_prediction_mode === "exact_score" ? (
-              <ExactScoreMode
-                groupId={groupId}
-                locked={knockoutLocked}
-                matches={
-                  settings.include_third_place
-                    ? knockoutMatches
-                    : knockoutMatches.filter((match) => match.round_key !== "third_place")
-                }
-                predictionByMatch={matchPredictionByMatch}
-                phase="knockout"
-              />
-            ) : (
-              <KnockoutMode
-                groupId={groupId}
-                locked={knockoutLocked}
-                includeThirdPlace={settings.include_third_place}
-                matches={knockoutMatches}
-                predictionByMatch={knockoutPredictionByMatch}
-              />
-            )
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Each match locks 1 hour before its kickoff — you can keep changing picks for
+                later rounds right up until then.
+              </p>
+              {settings.knockout_prediction_mode === "exact_score" ? (
+                <ExactScoreMode
+                  groupId={groupId}
+                  locked={allKnockoutLocked}
+                  matches={
+                    settings.include_third_place
+                      ? knockoutMatches
+                      : knockoutMatches.filter((match) => match.round_key !== "third_place")
+                  }
+                  predictionByMatch={matchPredictionByMatch}
+                  phase="knockout"
+                />
+              ) : (
+                <KnockoutMode
+                  groupId={groupId}
+                  includeThirdPlace={settings.include_third_place}
+                  matches={knockoutMatches}
+                  predictionByMatch={knockoutPredictionByMatch}
+                />
+              )}
+            </div>
           ) : (
             <EmptyState
               title="No knockout fixtures yet"
@@ -357,6 +365,10 @@ function ExactScoreMode({
     <div className="space-y-3">
       {matches.map((match) => {
         const prediction = predictionByMatch.get(match.id);
+        // Knockout matches lock per-match (1h before kickoff); group stage uses
+        // the single group-stage lock passed in.
+        const rowLocked = phase === "knockout" ? isKnockoutMatchLocked(match.kickoff_time) : locked;
+        const lockTime = phase === "knockout" ? knockoutLockTime(match.kickoff_time) : null;
         return (
           <form key={match.id} action={saveMatchPrediction} className="grid gap-3 rounded-3xl bg-muted p-4 md:grid-cols-[1fr_auto]">
             <input type="hidden" name="groupId" value={groupId} />
@@ -366,14 +378,23 @@ function ExactScoreMode({
               <p className="font-black">
                 {match.home_team_name} vs {match.away_team_name}
               </p>
-              <p className="text-xs text-muted-foreground">{match.group_name ?? match.stage}</p>
+              <p className="text-xs text-muted-foreground">
+                {match.group_name ?? match.stage}
+                {phase === "knockout"
+                  ? rowLocked
+                    ? " · Locked"
+                    : lockTime
+                      ? ` · Locks ${dateFormat.format(lockTime)}`
+                      : ""
+                  : ""}
+              </p>
             </div>
             <div className="flex items-center gap-2">
               {prediction ? <Badge variant="outline">{prediction.points} pts</Badge> : null}
-              <Input name="homeScore" type="number" min="0" className="w-16 text-center" defaultValue={prediction?.home_score ?? ""} disabled={locked} />
+              <Input name="homeScore" type="number" min="0" className="w-16 text-center" defaultValue={prediction?.home_score ?? ""} disabled={rowLocked} />
               <span className="font-black">-</span>
-              <Input name="awayScore" type="number" min="0" className="w-16 text-center" defaultValue={prediction?.away_score ?? ""} disabled={locked} />
-              <Button type="submit" disabled={locked}>Save</Button>
+              <Input name="awayScore" type="number" min="0" className="w-16 text-center" defaultValue={prediction?.away_score ?? ""} disabled={rowLocked} />
+              <Button type="submit" disabled={rowLocked}>Save</Button>
             </div>
           </form>
         );
@@ -384,13 +405,11 @@ function ExactScoreMode({
 
 function KnockoutMode({
   groupId,
-  locked,
   includeThirdPlace,
   matches,
   predictionByMatch
 }: {
   groupId: string;
-  locked: boolean;
   includeThirdPlace: boolean;
   matches: MatchRow[];
   predictionByMatch: Map<string, { predicted_team_id: string; points: number }>;
@@ -403,6 +422,9 @@ function KnockoutMode({
     <div className="space-y-3">
       {visibleMatches.map((match, index) => {
         const prediction = predictionByMatch.get(match.id);
+        const locked = isKnockoutMatchLocked(match.kickoff_time);
+        const lockTime = knockoutLockTime(match.kickoff_time);
+        const hasTeams = Boolean(match.home_team_id || match.away_team_id);
         return (
           <form key={match.id} action={saveKnockoutPrediction} className="grid gap-3 rounded-3xl bg-muted p-4 md:grid-cols-[1fr_auto]">
             <input type="hidden" name="groupId" value={groupId} />
@@ -413,27 +435,40 @@ function KnockoutMode({
               <p className="font-black">
                 {match.home_team_name} vs {match.away_team_name}
               </p>
-              <p className="text-xs text-muted-foreground">{match.stage}</p>
+              <p className="text-xs text-muted-foreground">
+                {match.stage}
+                {locked
+                  ? " · Locked"
+                  : lockTime
+                    ? ` · Locks ${dateFormat.format(lockTime)}`
+                    : ""}
+              </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {prediction ? <Badge variant="outline">{prediction.points} pts</Badge> : null}
-              <Select name="predictedTeamId" defaultValue={prediction?.predicted_team_id} disabled={locked}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Pick winner" />
-                </SelectTrigger>
-                <SelectContent>
-                  {match.home_team_id ? (
-                    <SelectItem value={match.home_team_id}>{match.home_team_name}</SelectItem>
-                  ) : null}
-                  {match.away_team_id ? (
-                    <SelectItem value={match.away_team_id}>{match.away_team_name}</SelectItem>
-                  ) : null}
-                </SelectContent>
-              </Select>
-              <Button type="submit" disabled={locked}>
-                <Trophy className="h-4 w-4" />
-                Save
-              </Button>
+              {hasTeams ? (
+                <>
+                  <Select name="predictedTeamId" defaultValue={prediction?.predicted_team_id} disabled={locked}>
+                    <SelectTrigger className="w-48">
+                      <SelectValue placeholder="Pick winner" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {match.home_team_id ? (
+                        <SelectItem value={match.home_team_id}>{match.home_team_name}</SelectItem>
+                      ) : null}
+                      {match.away_team_id ? (
+                        <SelectItem value={match.away_team_id}>{match.away_team_name}</SelectItem>
+                      ) : null}
+                    </SelectContent>
+                  </Select>
+                  <Button type="submit" disabled={locked}>
+                    <Trophy className="h-4 w-4" />
+                    Save
+                  </Button>
+                </>
+              ) : (
+                <span className="text-sm text-muted-foreground">Teams not decided yet</span>
+              )}
             </div>
           </form>
         );

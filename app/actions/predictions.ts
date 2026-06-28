@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { requireAppUser } from "@/lib/dev-auth";
+import { isKnockoutMatchLocked } from "@/lib/utils";
 import {
   calculateExactScoreResult,
   calculateOutcomePoints,
@@ -91,23 +92,27 @@ async function getThirdPlaceAdvancerLimit(supabase: SupabaseClient, groupId: str
   return tournament?.group_best_third_place_advancers ?? 0;
 }
 
-async function assertKnockoutUnlocked(supabase: SupabaseClient, groupId: string) {
+async function assertKnockoutOpened(supabase: SupabaseClient, groupId: string) {
   const { data: settings, error } = await supabase
     .from("group_prediction_settings")
-    .select("knockout_opened_at,knockout_locked_at")
+    .select("knockout_opened_at")
     .eq("group_id", groupId)
     .single();
 
   if (error) throw error;
   if (!settings.knockout_opened_at) throw new Error("Knockout predictions are not open yet.");
-  if (settings.knockout_locked_at && new Date(settings.knockout_locked_at) <= new Date()) {
-    throw new Error("Knockout predictions are locked.");
+}
+
+// Each knockout match locks individually, an hour before its own kickoff.
+function assertKnockoutMatchUnlocked(kickoffTime: string | null | undefined) {
+  if (isKnockoutMatchLocked(kickoffTime)) {
+    throw new Error("Predictions for this match are locked.");
   }
 }
 
-async function isKnockoutUnlocked(supabase: SupabaseClient, groupId: string) {
+async function isKnockoutOpen(supabase: SupabaseClient, groupId: string) {
   try {
-    await assertKnockoutUnlocked(supabase, groupId);
+    await assertKnockoutOpened(supabase, groupId);
     return true;
   } catch {
     return false;
@@ -210,20 +215,21 @@ export async function saveMatchPrediction(formData: FormData) {
   const { supabase, user } = await requireUser();
   const { tournamentId } = await getGroupTournament(supabase, parsed.groupId);
   if (parsed.predictionPhase === "knockout") {
-    await assertKnockoutUnlocked(supabase, parsed.groupId);
+    await assertKnockoutOpened(supabase, parsed.groupId);
   } else {
     await assertGroupStageUnlocked(supabase, parsed.groupId);
   }
 
   const { data: match, error: matchError } = await supabase
     .from("matches")
-    .select("tournament_id,stage_type,status,home_score,away_score")
+    .select("tournament_id,stage_type,status,home_score,away_score,kickoff_time")
     .eq("id", parsed.matchId)
     .single();
 
   if (matchError) throw matchError;
   if (match.tournament_id !== tournamentId) throw new Error("Match does not belong to this group tournament.");
   if (match.stage_type !== parsed.predictionPhase) throw new Error("Prediction phase does not match this fixture.");
+  if (parsed.predictionPhase === "knockout") assertKnockoutMatchUnlocked(match.kickoff_time);
 
   const exactResult =
     parsed.homeScore != null && parsed.awayScore != null
@@ -272,13 +278,13 @@ export async function saveKnockoutPrediction(formData: FormData) {
   });
   const { supabase, user } = await requireUser();
   const { tournamentId } = await getGroupTournament(supabase, parsed.groupId);
-  await assertKnockoutUnlocked(supabase, parsed.groupId);
+  await assertKnockoutOpened(supabase, parsed.groupId);
 
   if (!parsed.sourceMatchId) throw new Error("Knockout predictions must be tied to a fixture.");
 
   const { data: match, error: matchError } = await supabase
     .from("matches")
-    .select("tournament_id,stage_type,round_key,home_team_id,away_team_id")
+    .select("tournament_id,stage_type,round_key,home_team_id,away_team_id,kickoff_time")
     .eq("id", parsed.sourceMatchId)
     .single();
 
@@ -286,6 +292,7 @@ export async function saveKnockoutPrediction(formData: FormData) {
   if (match.tournament_id !== tournamentId) throw new Error("Match does not belong to this group tournament.");
   if (match.stage_type !== "knockout") throw new Error("Winner pick must be for a knockout fixture.");
   if (match.round_key !== parsed.roundKey) throw new Error("Winner pick round does not match the fixture.");
+  assertKnockoutMatchUnlocked(match.kickoff_time);
   if (![match.home_team_id, match.away_team_id].includes(parsed.predictedTeamId)) {
     throw new Error("Winner pick must be one of the fixture teams.");
   }
@@ -389,7 +396,7 @@ export async function copyPredictionsFromGroup(formData: FormData) {
     }
   }
 
-  const knockoutOpen = await isKnockoutUnlocked(supabase, parsed.targetGroupId);
+  const knockoutOpen = await isKnockoutOpen(supabase, parsed.targetGroupId);
   if (knockoutOpen && sourceSettings.knockout_prediction_mode === targetSettings.knockout_prediction_mode) {
     if (targetSettings.knockout_prediction_mode === "winner_bracket") {
       const { data, error } = await supabase

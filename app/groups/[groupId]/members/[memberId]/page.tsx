@@ -2,6 +2,7 @@ import { getGroupContext, getMemberPredictionData } from "@/lib/data";
 import { flagForTeam } from "@/lib/team-flags";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { dateFormat, isKnockoutMatchLocked, knockoutLockTime } from "@/lib/utils";
 
 function isLockedAt(time: string | null | undefined) {
   return Boolean(time && new Date(time) <= new Date());
@@ -44,7 +45,6 @@ export default async function MemberPredictionsPage({
     (m) => m.stage_type === "group" && m.kickoff_time
   )?.kickoff_time ?? null;
   const groupLocked = isLockedAt(firstGroupKickoff);
-  const knockoutLocked = isLockedAt(settings?.knockout_locked_at);
 
   const groupMatches = allMatches.filter((m) => m.stage_type === "group");
   const knockoutMatches = allMatches.filter((m) => m.stage_type === "knockout");
@@ -205,24 +205,14 @@ export default async function MemberPredictionsPage({
         </Card>
       )}
 
-      {/* Knockout predictions hidden until the knockout phase locks. */}
-      {settings?.knockout_opened_at && !knockoutLocked && (
-        <Card>
-          <CardHeader><CardTitle>Knockout predictions</CardTitle></CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Hidden until knockout predictions lock.
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Knockout predictions */}
-      {knockoutLocked && knockoutMatches.length > 0 && (
+      {/* Knockout predictions — each pick is revealed once that match locks. */}
+      {settings?.knockout_opened_at && knockoutMatches.length > 0 && (
         <Card>
           <CardHeader><CardTitle>Knockout predictions</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             {knockoutMatches.map((match) => {
+              const matchLocked = isKnockoutMatchLocked(match.kickoff_time);
+              const lockTime = knockoutLockTime(match.kickoff_time);
               const p = knockoutPredictionByMatch.get(match.id);
               const teams = [
                 match.home_team_id ? { id: match.home_team_id, name: match.home_team_name } : null,
@@ -233,15 +223,27 @@ export default async function MemberPredictionsPage({
                 <div key={match.id} className="flex items-center justify-between rounded-3xl bg-muted p-4">
                   <div>
                     <p className="font-black">{match.home_team_name} vs {match.away_team_name}</p>
-                    <p className="text-xs text-muted-foreground">{match.stage_type}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {matchLocked
+                        ? match.stage_type
+                        : lockTime
+                          ? `Hidden until ${dateFormat.format(lockTime)}`
+                          : "Hidden until lock"}
+                    </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    {pickedTeam ? (
-                      <Badge variant="outline">{pickedTeam.name}</Badge>
+                    {matchLocked ? (
+                      <>
+                        {pickedTeam ? (
+                          <Badge variant="outline">{pickedTeam.name}</Badge>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">—</span>
+                        )}
+                        {p ? <Badge variant="outline">{p.points} pts</Badge> : null}
+                      </>
                     ) : (
-                      <span className="text-sm text-muted-foreground">—</span>
+                      <span className="text-sm text-muted-foreground">🔒 Hidden</span>
                     )}
-                    {p ? <Badge variant="outline">{p.points} pts</Badge> : null}
                   </div>
                 </div>
               );

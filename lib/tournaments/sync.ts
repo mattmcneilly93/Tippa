@@ -85,6 +85,29 @@ export async function syncTournament(tournamentCode: string) {
   });
 
   if (matchesError) throw matchesError;
+
+  // Remove stale match rows that are no longer in the feed. This clears out
+  // duplicates left behind by earlier syncs whose external_id embedded team
+  // names (knockout placeholders like "1I" changed the id when they resolved).
+  const currentExternalIds = new Set(rows.map((row) => row.external_id));
+  const { data: existingMatches, error: existingError } = await supabase
+    .from("matches")
+    .select("id,external_id")
+    .eq("tournament_id", tournamentRow.id);
+
+  if (existingError) throw existingError;
+  const staleMatchIds = (existingMatches ?? [])
+    .filter((match) => !currentExternalIds.has(match.external_id))
+    .map((match) => match.id);
+
+  if (staleMatchIds.length) {
+    const { error: deleteError } = await supabase
+      .from("matches")
+      .delete()
+      .in("id", staleMatchIds);
+    if (deleteError) throw deleteError;
+  }
+
   await recalculateScoresForTournament(tournamentRow.id);
 
   return {

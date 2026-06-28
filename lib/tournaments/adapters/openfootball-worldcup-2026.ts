@@ -46,7 +46,9 @@ function statusFor(match: OpenFootballMatch): NormalizedMatch["status"] {
 
 function isPlaceholderTeam(name?: string) {
   if (!name) return true;
-  return /^(?:\d+[A-Z](?:\/[A-Z])?|[WL]\d+)$/i.test(name);
+  // Group-position placeholders: "1I", "2K", or third-place slots "3A/B/C/D/F".
+  // Winner/loser-of-match placeholders: "W89", "L74".
+  return /^(?:\d+[A-Z](?:\/[A-Z])*|[WL]\d+)$/i.test(name);
 }
 
 function classifyRound(match: OpenFootballMatch): Pick<NormalizedMatch, "stageType" | "roundKey" | "roundOrder"> {
@@ -78,13 +80,14 @@ function classifyRound(match: OpenFootballMatch): Pick<NormalizedMatch, "stageTy
   return { stageType: "knockout", roundKey: "round_of_32", roundOrder: 1 };
 }
 
+// Identify a match by its fixed bracket slot, not the teams in it. Knockout
+// placeholders ("1I", "W89") resolve to real teams once group play finishes; if
+// the team names were part of the id, each resolution would create a new row
+// instead of updating the existing one. Round + group + feed position is stable.
 function externalIdFor(match: OpenFootballMatch, index: number) {
   return [
-    match.date ?? "unknown-date",
     match.round ?? "unknown-round",
     match.group ?? "knockout",
-    match.team1 ?? "tbd-home",
-    match.team2 ?? "tbd-away",
     index + 1
   ]
     .join("-")

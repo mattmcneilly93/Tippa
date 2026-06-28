@@ -165,6 +165,25 @@ export const getMemberPredictionData = cache(async function getMemberPredictionD
   };
 });
 
+// Admin-only: read a member's knockout picks bypassing RLS so they can be
+// prefilled for editing even before the phase is globally readable.
+export const getMemberKnockoutPredictionsForAdmin = cache(
+  async function getMemberKnockoutPredictionsForAdmin(groupId: string, memberId: string) {
+    const { isAdmin } = await getGroupContext(groupId);
+    if (!isAdmin) return [];
+
+    const service = createServiceClient();
+    const { data, error } = await service
+      .from("knockout_prediction_entries")
+      .select("source_match_id,predicted_team_id,points")
+      .eq("group_id", groupId)
+      .eq("user_id", memberId);
+
+    if (error) throw error;
+    return data ?? [];
+  }
+);
+
 export const getAdminPageData = cache(async function getAdminPageData(groupId: string) {
   const { supabase, group } = await getGroupContext(groupId);
   const [{ data: matches }, { data: firstGroup }, { data: firstKnockout }] = await Promise.all([

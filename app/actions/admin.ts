@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireAppUser } from "@/lib/dev-auth";
+import { createServiceClient } from "@/lib/supabase/server";
 import { syncTournament } from "@/lib/tournaments/sync";
 import { recalculateScoresForGroup } from "@/lib/tournaments/sync-scores";
 
@@ -148,4 +149,102 @@ export async function recalculateGroupPredictionScores(formData: FormData) {
   revalidatePath(`/groups/${parsed.groupId}/leaderboard`);
   revalidatePath(`/groups/${parsed.groupId}/predictions`);
   revalidatePath(`/groups/${parsed.groupId}/admin`);
+}
+
+const adminKnockoutSchema = z.object({
+  groupId: z.string().uuid(),
+  targetUserId: z.string().uuid(),
+  roundKey: z.enum([
+    "round_of_32",
+    "round_of_16",
+    "quarter_final",
+    "semi_final",
+    "third_place",
+    "final"
+  ]),
+  slotIndex: z.coerce.number().int().min(0),
+  sourceMatchId: z.string().uuid(),
+  predictedTeamId: z.string().uuid()
+});
+
+// Admins can set or correct any member's knockout pick at any time — before or
+// after a match — overriding the per-match lock. Authorized by admin role here,
+// then written with the service client so RLS doesn't block the other user_id.
+export async function adminSaveKnockoutPrediction(formData: FormData) {
+  const parsed = adminKnockoutSchema.parse({
+    groupId: formData.get("groupId"),
+    targetUserId: formData.get("targetUserId"),
+    roundKey: formData.get("roundKey"),
+    slotIndex: formData.get("slotIndex"),
+    sourceMatchId: formData.get("sourceMatchId"),
+    predictedTeamId: formData.get("predictedTeamId")
+  });
+
+  await requireGroupAdmin(parsed.groupId);
+  const service = createServiceClient();
+
+  const { data: group, error: groupError } = await service
+    .from("groups")
+    .select("tournament_id")
+    .eq("id", parsed.groupId)
+    .single();
+  if (groupError) throw groupError;
+
+  const { data: membership, error: membershipError } = await service
+    .from("group_members")
+    .select("user_id")
+    .eq("group_id", parsed.groupId)
+    .eq("user_id", parsed.targetUserId)
+    .maybeSingle();
+  if (membershipError) throw membershipError;
+  if (!membership) throw new Error("That player is not in this group.");
+
+  const { data: match, error: matchError } = await service
+    .from("matches")
+    .select("tournament_id,stage_type,round_key,home_team_id,away_team_id")
+    .eq("id", parsed.sourceMatchId)
+    .single();
+  if (matchError) throw matchError;
+  if (match.tournament_id !== group.tournament_id) {
+    throw new Error("Match does not belong to this group tournament.");
+  }
+  if (match.stage_type !== "knockout") throw new Error("Winner pick must be for a knockout fixture.");
+  if (match.round_key !== parsed.roundKey) throw new Error("Winner pick round does not match the fixture.");
+  if (![match.home_team_id, match.away_team_id].includes(parsed.predictedTeamId)) {
+    throw new Error("Winner pick must be one of the fixture teams.");
+  }
+
+  // Update the member's existing entry for this fixture if there is one, so we
+  // never create a second row for the same match (scoring keys on the match).
+  const { data: existing, error: existingError } = await service
+    .from("knockout_prediction_entries")
+    .select("id")
+    .eq("group_id", parsed.groupId)
+    .eq("user_id", parsed.targetUserId)
+    .eq("source_match_id", parsed.sourceMatchId)
+    .maybeSingle();
+  if (existingError) throw existingError;
+
+  if (existing) {
+    const { error } = await service
+      .from("knockout_prediction_entries")
+      .update({ predicted_team_id: parsed.predictedTeamId })
+      .eq("id", existing.id);
+    if (error) throw error;
+  } else {
+    const { error } = await service.from("knockout_prediction_entries").insert({
+      group_id: parsed.groupId,
+      user_id: parsed.targetUserId,
+      round_key: parsed.roundKey,
+      slot_index: parsed.slotIndex,
+      source_match_id: parsed.sourceMatchId,
+      predicted_team_id: parsed.predictedTeamId
+    });
+    if (error) throw error;
+  }
+
+  await recalculateScoresForGroup(parsed.groupId);
+  revalidatePath(`/groups/${parsed.groupId}/members/${parsed.targetUserId}`);
+  revalidatePath(`/groups/${parsed.groupId}/leaderboard`);
+  revalidatePath(`/groups/${parsed.groupId}`);
 }

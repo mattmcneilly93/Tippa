@@ -1,7 +1,20 @@
-import { getGroupContext, getMemberPredictionData } from "@/lib/data";
+import {
+  getGroupContext,
+  getMemberKnockoutPredictionsForAdmin,
+  getMemberPredictionData
+} from "@/lib/data";
+import { adminSaveKnockoutPrediction } from "@/app/actions/admin";
 import { flagForTeam } from "@/lib/team-flags";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select";
 import { dateFormat, isKnockoutMatchLocked, knockoutLockTime } from "@/lib/utils";
 
 function isLockedAt(time: string | null | undefined) {
@@ -14,13 +27,14 @@ export default async function MemberPredictionsPage({
   params: Promise<{ groupId: string; memberId: string }>;
 }) {
   const { groupId, memberId } = await params;
-  const { group } = await getGroupContext(groupId);
+  const { group, isAdmin } = await getGroupContext(groupId);
 
   const settings = (Array.isArray(group.group_prediction_settings)
     ? group.group_prediction_settings[0]
     : group.group_prediction_settings) as {
     group_stage_prediction_mode: string;
     knockout_prediction_mode: string;
+    include_third_place: boolean;
     knockout_opened_at: string | null;
     knockout_locked_at: string | null;
   } | null;
@@ -60,6 +74,21 @@ export default async function MemberPredictionsPage({
       .filter((p) => p.source_match_id)
       .map((p) => [p.source_match_id, p])
   );
+
+  // Admins can edit knockout picks anytime; prefill with the member's current
+  // picks read via the service client (works even before the global lock).
+  const adminKnockoutPredictions = isAdmin
+    ? await getMemberKnockoutPredictionsForAdmin(groupId, memberId)
+    : [];
+  const adminKnockoutByMatch = new Map(
+    adminKnockoutPredictions
+      .filter((p) => p.source_match_id)
+      .map((p) => [p.source_match_id, p])
+  );
+  const includeThirdPlace = settings?.include_third_place ?? false;
+  const editableKnockoutMatches = includeThirdPlace
+    ? knockoutMatches
+    : knockoutMatches.filter((m) => m.round_key !== "third_place");
 
   // Points breakdown — where each person's total came from.
   const groupStagePoints =
@@ -205,8 +234,74 @@ export default async function MemberPredictionsPage({
         </Card>
       )}
 
+      {/* Admin override editor — set or fix this member's knockout picks anytime. */}
+      {isAdmin && settings?.knockout_opened_at && editableKnockoutMatches.length > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between gap-3">
+              <CardTitle>Edit knockout picks</CardTitle>
+              <Badge variant="warm">Admin</Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              You can set or correct {displayName}&apos;s picks here at any time — before or
+              after a match. Scores recalculate automatically.
+            </p>
+            {editableKnockoutMatches.map((match, index) => {
+              const current = adminKnockoutByMatch.get(match.id);
+              const locked = isKnockoutMatchLocked(match.kickoff_time);
+              const hasTeams = Boolean(match.home_team_id || match.away_team_id);
+              return (
+                <form
+                  key={match.id}
+                  action={adminSaveKnockoutPrediction}
+                  className="grid gap-3 rounded-3xl bg-muted p-4 md:grid-cols-[1fr_auto]"
+                >
+                  <input type="hidden" name="groupId" value={groupId} />
+                  <input type="hidden" name="targetUserId" value={memberId} />
+                  <input type="hidden" name="roundKey" value={match.round_key} />
+                  <input type="hidden" name="slotIndex" value={index} />
+                  <input type="hidden" name="sourceMatchId" value={match.id} />
+                  <div>
+                    <p className="font-black">{match.home_team_name} vs {match.away_team_name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {match.stage_type}
+                      {locked ? " · Match locked (admin override)" : ""}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {current ? <Badge variant="outline">{current.points} pts</Badge> : null}
+                    {hasTeams ? (
+                      <>
+                        <Select name="predictedTeamId" defaultValue={current?.predicted_team_id ?? undefined}>
+                          <SelectTrigger className="w-48">
+                            <SelectValue placeholder="Pick winner" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {match.home_team_id ? (
+                              <SelectItem value={match.home_team_id}>{match.home_team_name}</SelectItem>
+                            ) : null}
+                            {match.away_team_id ? (
+                              <SelectItem value={match.away_team_id}>{match.away_team_name}</SelectItem>
+                            ) : null}
+                          </SelectContent>
+                        </Select>
+                        <Button type="submit">Save</Button>
+                      </>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">Teams not decided yet</span>
+                    )}
+                  </div>
+                </form>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Knockout predictions — each pick is revealed once that match locks. */}
-      {settings?.knockout_opened_at && knockoutMatches.length > 0 && (
+      {!isAdmin && settings?.knockout_opened_at && knockoutMatches.length > 0 && (
         <Card>
           <CardHeader><CardTitle>Knockout predictions</CardTitle></CardHeader>
           <CardContent className="space-y-3">

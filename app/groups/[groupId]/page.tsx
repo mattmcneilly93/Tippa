@@ -29,7 +29,12 @@ export default async function GroupPage({ params }: { params: Promise<{ groupId:
             <CardTitle>Leaderboard</CardTitle>
           </CardHeader>
           <CardContent>
-            <Leaderboard rows={leaderboard} />
+            <Leaderboard
+              rows={leaderboard.map((row) => ({
+                ...row,
+                href: `/groups/${groupId}/members/${row.userId}`
+              }))}
+            />
           </CardContent>
         </Card>
       </div>

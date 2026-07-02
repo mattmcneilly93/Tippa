@@ -6,7 +6,6 @@ import {
 import { adminSaveKnockoutPrediction } from "@/app/actions/admin";
 import { flagForTeam } from "@/lib/team-flags";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
@@ -15,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { dateFormat, isKnockoutMatchLocked, knockoutLockTime } from "@/lib/utils";
 
 function isLockedAt(time: string | null | undefined) {
@@ -287,7 +287,7 @@ export default async function MemberPredictionsPage({
                             ) : null}
                           </SelectContent>
                         </Select>
-                        <Button type="submit">Save</Button>
+                        <SubmitButton idleText="Save" />
                       </>
                     ) : (
                       <span className="text-sm text-muted-foreground">Teams not decided yet</span>

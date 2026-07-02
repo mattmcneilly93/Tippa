@@ -3,10 +3,10 @@ import { saveKnockoutPrediction, saveMatchPrediction } from "@/app/actions/predi
 import { GroupTablePredictions } from "@/components/group-table-predictions";
 import { EmptyState } from "@/components/empty-state";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { getGroupContext, getPredictionPageData } from "@/lib/data";
 import { flagForTeam } from "@/lib/team-flags";
 import { dateFormat, isKnockoutMatchLocked, knockoutLockTime } from "@/lib/utils";
@@ -339,7 +339,7 @@ function MatchOutcomeMode({
                   <SelectItem value="away">{match.away_team_name}</SelectItem>
                 </SelectContent>
               </Select>
-              <Button type="submit" disabled={locked}>Save</Button>
+              <SubmitButton idleText="Save" disabled={locked} />
             </div>
           </form>
         );
@@ -394,7 +394,7 @@ function ExactScoreMode({
               <Input name="homeScore" type="number" min="0" className="w-16 text-center" defaultValue={prediction?.home_score ?? ""} disabled={rowLocked} />
               <span className="font-black">-</span>
               <Input name="awayScore" type="number" min="0" className="w-16 text-center" defaultValue={prediction?.away_score ?? ""} disabled={rowLocked} />
-              <Button type="submit" disabled={rowLocked}>Save</Button>
+              <SubmitButton idleText="Save" disabled={rowLocked} />
             </div>
           </form>
         );
@@ -461,10 +461,10 @@ function KnockoutMode({
                       ) : null}
                     </SelectContent>
                   </Select>
-                  <Button type="submit" disabled={locked}>
+                  <SubmitButton idleText="Save" disabled={locked}>
                     <Trophy className="h-4 w-4" />
                     Save
-                  </Button>
+                  </SubmitButton>
                 </>
               ) : (
                 <span className="text-sm text-muted-foreground">Teams not decided yet</span>

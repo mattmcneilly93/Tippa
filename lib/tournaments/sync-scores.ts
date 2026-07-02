@@ -39,6 +39,14 @@ const defaultAdvancementRules: AdvancementRules = {
   bestThirdPlaceAdvancers: 0
 };
 
+// Run row updates in bounded-concurrency batches instead of one-at-a-time, so
+// recalculating a large group is a few round-trips rather than hundreds.
+async function runInChunks<T>(items: T[], run: (item: T) => PromiseLike<unknown>, chunkSize = 25) {
+  for (let i = 0; i < items.length; i += chunkSize) {
+    await Promise.all(items.slice(i, i + chunkSize).map(run));
+  }
+}
+
 function winnerTeamId(match: MatchRow) {
   if (
     match.status !== "finished" ||
@@ -218,7 +226,7 @@ async function recalculateWithMatches(
       .map((team) => team.teamId)
   );
 
-  for (const prediction of tablePredictions ?? []) {
+  const tableUpdates = (tablePredictions ?? []).map((prediction) => {
     const actualStanding = standingsByGroup.get(prediction.group_name) ?? [];
     const actual = actualStanding.map((team) => team.teamId);
     const actualAdvancingTeamIds = [
@@ -241,8 +249,11 @@ async function recalculateWithMatches(
         )
       : 0;
 
-    await supabase.from("group_table_predictions").update({ points }).eq("id", prediction.id);
-  }
+    return { id: prediction.id, points };
+  });
+  await runInChunks(tableUpdates, (update) =>
+    supabase.from("group_table_predictions").update({ points: update.points }).eq("id", update.id)
+  );
 
   const { data: matchPredictions, error: matchError } = await supabase
     .from("match_predictions")
@@ -250,9 +261,9 @@ async function recalculateWithMatches(
     .in("group_id", groupIds);
   if (matchError) throw matchError;
 
-  for (const prediction of matchPredictions ?? []) {
+  const matchUpdates = (matchPredictions ?? []).flatMap((prediction) => {
     const match = matchById.get(prediction.match_id);
-    if (!match) continue;
+    if (!match) return [];
 
     const settings = settingsMap.get(prediction.group_id);
     const result =
@@ -279,16 +290,19 @@ async function recalculateWithMatches(
             correctGoalDifference: false
           };
 
-    await supabase
+    return [{ id: prediction.id, result }];
+  });
+  await runInChunks(matchUpdates, (update) =>
+    supabase
       .from("match_predictions")
       .update({
-        points: result.points,
-        exact_score: result.exactScore,
-        correct_outcome: result.correctOutcome,
-        correct_goal_difference: result.correctGoalDifference
+        points: update.result.points,
+        exact_score: update.result.exactScore,
+        correct_outcome: update.result.correctOutcome,
+        correct_goal_difference: update.result.correctGoalDifference
       })
-      .eq("id", prediction.id);
-  }
+      .eq("id", update.id)
+  );
 
   const { data: knockoutPredictions, error: knockoutError } = await supabase
     .from("knockout_prediction_entries")
@@ -296,13 +310,16 @@ async function recalculateWithMatches(
     .in("group_id", groupIds);
   if (knockoutError) throw knockoutError;
 
-  for (const prediction of knockoutPredictions ?? []) {
+  const knockoutUpdates = (knockoutPredictions ?? []).map((prediction) => {
     const match = prediction.source_match_id ? matchById.get(prediction.source_match_id) : null;
     const points =
       match && winnerTeamId(match) === prediction.predicted_team_id
         ? knockoutPointsForRound(prediction.round_key as RoundKey, settingsMap.get(prediction.group_id))
         : 0;
 
-    await supabase.from("knockout_prediction_entries").update({ points }).eq("id", prediction.id);
-  }
+    return { id: prediction.id, points };
+  });
+  await runInChunks(knockoutUpdates, (update) =>
+    supabase.from("knockout_prediction_entries").update({ points: update.points }).eq("id", update.id)
+  );
 }

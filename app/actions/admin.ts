@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireAppUser } from "@/lib/dev-auth";
 import { createServiceClient } from "@/lib/supabase/server";
+import { knockoutPointsForRound, scoreSettingsFromRow } from "@/lib/scoring";
 import { syncTournament } from "@/lib/tournaments/sync";
 import { recalculateScoresForGroup } from "@/lib/tournaments/sync-scores";
 
@@ -199,12 +200,17 @@ export async function adminSaveKnockoutPrediction(formData: FormData) {
   if (membershipError) throw membershipError;
   if (!membership) throw new Error("That player is not in this group.");
 
-  const { data: match, error: matchError } = await service
-    .from("matches")
-    .select("tournament_id,stage_type,round_key,home_team_id,away_team_id")
-    .eq("id", parsed.sourceMatchId)
-    .single();
+  const [{ data: match, error: matchError }, { data: settingsRow, error: settingsError }] =
+    await Promise.all([
+      service
+        .from("matches")
+        .select("tournament_id,stage_type,round_key,home_team_id,away_team_id,status,home_score,away_score")
+        .eq("id", parsed.sourceMatchId)
+        .single(),
+      service.from("group_prediction_settings").select("*").eq("group_id", parsed.groupId).single()
+    ]);
   if (matchError) throw matchError;
+  if (settingsError) throw settingsError;
   if (match.tournament_id !== group.tournament_id) {
     throw new Error("Match does not belong to this group tournament.");
   }
@@ -213,6 +219,23 @@ export async function adminSaveKnockoutPrediction(formData: FormData) {
   if (![match.home_team_id, match.away_team_id].includes(parsed.predictedTeamId)) {
     throw new Error("Winner pick must be one of the fixture teams.");
   }
+
+  // Score just this pick inline — a full-group recalc for a single edit is slow
+  // (hundreds of rows) and unnecessary; other members' points are unaffected.
+  const decided =
+    match.status === "finished" &&
+    match.home_score != null &&
+    match.away_score != null &&
+    match.home_score !== match.away_score;
+  const winnerTeamId = decided
+    ? match.home_score! > match.away_score!
+      ? match.home_team_id
+      : match.away_team_id
+    : null;
+  const points =
+    winnerTeamId && winnerTeamId === parsed.predictedTeamId
+      ? knockoutPointsForRound(parsed.roundKey, scoreSettingsFromRow(settingsRow))
+      : 0;
 
   // Update the member's existing entry for this fixture if there is one, so we
   // never create a second row for the same match (scoring keys on the match).
@@ -228,7 +251,7 @@ export async function adminSaveKnockoutPrediction(formData: FormData) {
   if (existing) {
     const { error } = await service
       .from("knockout_prediction_entries")
-      .update({ predicted_team_id: parsed.predictedTeamId })
+      .update({ predicted_team_id: parsed.predictedTeamId, points })
       .eq("id", existing.id);
     if (error) throw error;
   } else {
@@ -238,12 +261,12 @@ export async function adminSaveKnockoutPrediction(formData: FormData) {
       round_key: parsed.roundKey,
       slot_index: parsed.slotIndex,
       source_match_id: parsed.sourceMatchId,
-      predicted_team_id: parsed.predictedTeamId
+      predicted_team_id: parsed.predictedTeamId,
+      points
     });
     if (error) throw error;
   }
 
-  await recalculateScoresForGroup(parsed.groupId);
   revalidatePath(`/groups/${parsed.groupId}/members/${parsed.targetUserId}`);
   revalidatePath(`/groups/${parsed.groupId}/leaderboard`);
   revalidatePath(`/groups/${parsed.groupId}`);

@@ -257,6 +257,26 @@ as $$
   where gps.group_id = target_group_id;
 $$;
 
+-- Per-match knockout lock: the phase must be opened by an admin and the specific
+-- match must still be more than an hour from kickoff. Matches the app's
+-- per-match locking so writes aren't blocked once the first knockout kicks off.
+create or replace function public.knockout_match_open(target_group_id uuid, target_match_id uuid)
+returns boolean
+language sql
+stable
+as $$
+  select
+    exists (
+      select 1 from public.group_prediction_settings gps
+      where gps.group_id = target_group_id and gps.knockout_opened_at is not null
+    )
+    and exists (
+      select 1 from public.matches m
+      where m.id = target_match_id
+        and (m.kickoff_time is null or m.kickoff_time - interval '1 hour' > now())
+    );
+$$;
+
 alter table public.profiles enable row level security;
 alter table public.tournaments enable row level security;
 alter table public.groups enable row level security;
@@ -321,14 +341,14 @@ create policy "Users can write own unlocked match predictions" on public.match_p
   and public.is_group_member(group_id)
   and (
     (prediction_phase = 'group' and public.group_stage_unlocked(group_id))
-    or (prediction_phase = 'knockout' and public.knockout_unlocked(group_id))
+    or (prediction_phase = 'knockout' and public.knockout_match_open(group_id, match_id))
   )
 ) with check (
   user_id = auth.uid()
   and public.is_group_member(group_id)
   and (
     (prediction_phase = 'group' and public.group_stage_unlocked(group_id))
-    or (prediction_phase = 'knockout' and public.knockout_unlocked(group_id))
+    or (prediction_phase = 'knockout' and public.knockout_match_open(group_id, match_id))
   )
 );
 
@@ -336,9 +356,9 @@ create policy "Group members can read knockout predictions after lock or own" on
   public.is_group_member(group_id) and (user_id = auth.uid() or not public.knockout_unlocked(group_id))
 );
 create policy "Users can write own unlocked knockout predictions" on public.knockout_prediction_entries for all to authenticated using (
-  user_id = auth.uid() and public.is_group_member(group_id) and public.knockout_unlocked(group_id)
+  user_id = auth.uid() and public.is_group_member(group_id) and public.knockout_match_open(group_id, source_match_id)
 ) with check (
-  user_id = auth.uid() and public.is_group_member(group_id) and public.knockout_unlocked(group_id)
+  user_id = auth.uid() and public.is_group_member(group_id) and public.knockout_match_open(group_id, source_match_id)
 );
 
 insert into public.tournaments (code, name, year, source, is_supported, theme)

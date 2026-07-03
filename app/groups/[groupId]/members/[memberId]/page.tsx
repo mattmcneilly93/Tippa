@@ -4,17 +4,10 @@ import {
   getMemberPredictionData
 } from "@/lib/data";
 import { adminSaveKnockoutPrediction } from "@/app/actions/admin";
+import { KnockoutPickForm } from "@/components/knockout-pick-form";
 import { flagForTeam } from "@/lib/team-flags";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from "@/components/ui/select";
-import { SubmitButton } from "@/components/ui/submit-button";
 import { dateFormat, isKnockoutMatchLocked, knockoutLockTime } from "@/lib/utils";
 
 function isLockedAt(time: string | null | undefined) {
@@ -252,17 +245,15 @@ export default async function MemberPredictionsPage({
               const current = adminKnockoutByMatch.get(match.id);
               const locked = isKnockoutMatchLocked(match.kickoff_time);
               const hasTeams = Boolean(match.home_team_id || match.away_team_id);
+              const teams = [
+                match.home_team_id ? { id: match.home_team_id, name: match.home_team_name } : null,
+                match.away_team_id ? { id: match.away_team_id, name: match.away_team_name } : null
+              ].filter((team): team is { id: string; name: string } => Boolean(team));
               return (
-                <form
+                <div
                   key={match.id}
-                  action={adminSaveKnockoutPrediction}
                   className="grid gap-3 rounded-3xl bg-muted p-4 md:grid-cols-[1fr_auto]"
                 >
-                  <input type="hidden" name="groupId" value={groupId} />
-                  <input type="hidden" name="targetUserId" value={memberId} />
-                  <input type="hidden" name="roundKey" value={match.round_key} />
-                  <input type="hidden" name="slotIndex" value={index} />
-                  <input type="hidden" name="sourceMatchId" value={match.id} />
                   <div>
                     <p className="font-black">{match.home_team_name} vs {match.away_team_name}</p>
                     <p className="text-xs text-muted-foreground">
@@ -270,30 +261,20 @@ export default async function MemberPredictionsPage({
                       {locked ? " · Match locked (admin override)" : ""}
                     </p>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {current ? <Badge variant="outline">{current.points} pts</Badge> : null}
-                    {hasTeams ? (
-                      <>
-                        <Select name="predictedTeamId" defaultValue={current?.predicted_team_id ?? undefined}>
-                          <SelectTrigger className="w-48">
-                            <SelectValue placeholder="Pick winner" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {match.home_team_id ? (
-                              <SelectItem value={match.home_team_id}>{match.home_team_name}</SelectItem>
-                            ) : null}
-                            {match.away_team_id ? (
-                              <SelectItem value={match.away_team_id}>{match.away_team_name}</SelectItem>
-                            ) : null}
-                          </SelectContent>
-                        </Select>
-                        <SubmitButton idleText="Save" />
-                      </>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">Teams not decided yet</span>
-                    )}
-                  </div>
-                </form>
+                  <KnockoutPickForm
+                    action={adminSaveKnockoutPrediction}
+                    hiddenFields={{
+                      groupId,
+                      targetUserId: memberId,
+                      roundKey: match.round_key,
+                      slotIndex: String(index),
+                      sourceMatchId: match.id
+                    }}
+                    teams={hasTeams ? teams : []}
+                    defaultTeamId={current?.predicted_team_id ?? undefined}
+                    points={current?.points}
+                  />
+                </div>
               );
             })}
           </CardContent>

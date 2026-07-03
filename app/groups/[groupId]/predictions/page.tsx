@@ -1,6 +1,6 @@
-import { Trophy } from "lucide-react";
 import { saveKnockoutPrediction, saveMatchPrediction } from "@/app/actions/predictions";
 import { GroupTablePredictions } from "@/components/group-table-predictions";
+import { KnockoutPickForm } from "@/components/knockout-pick-form";
 import { EmptyState } from "@/components/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -425,12 +425,12 @@ function KnockoutMode({
         const locked = isKnockoutMatchLocked(match.kickoff_time);
         const lockTime = knockoutLockTime(match.kickoff_time);
         const hasTeams = Boolean(match.home_team_id || match.away_team_id);
+        const teams = [
+          match.home_team_id ? { id: match.home_team_id, name: match.home_team_name } : null,
+          match.away_team_id ? { id: match.away_team_id, name: match.away_team_name } : null
+        ].filter((team): team is { id: string; name: string } => Boolean(team));
         return (
-          <form key={match.id} action={saveKnockoutPrediction} className="grid gap-3 rounded-3xl bg-muted p-4 md:grid-cols-[1fr_auto]">
-            <input type="hidden" name="groupId" value={groupId} />
-            <input type="hidden" name="roundKey" value={match.round_key} />
-            <input type="hidden" name="slotIndex" value={index} />
-            <input type="hidden" name="sourceMatchId" value={match.id} />
+          <div key={match.id} className="grid gap-3 rounded-3xl bg-muted p-4 md:grid-cols-[1fr_auto]">
             <div>
               <p className="font-black">
                 {match.home_team_name} vs {match.away_team_name}
@@ -444,33 +444,20 @@ function KnockoutMode({
                     : ""}
               </p>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {prediction ? <Badge variant="outline">{prediction.points} pts</Badge> : null}
-              {hasTeams ? (
-                <>
-                  <Select name="predictedTeamId" defaultValue={prediction?.predicted_team_id} disabled={locked}>
-                    <SelectTrigger className="w-48">
-                      <SelectValue placeholder="Pick winner" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {match.home_team_id ? (
-                        <SelectItem value={match.home_team_id}>{match.home_team_name}</SelectItem>
-                      ) : null}
-                      {match.away_team_id ? (
-                        <SelectItem value={match.away_team_id}>{match.away_team_name}</SelectItem>
-                      ) : null}
-                    </SelectContent>
-                  </Select>
-                  <SubmitButton idleText="Save" disabled={locked}>
-                    <Trophy className="h-4 w-4" />
-                    Save
-                  </SubmitButton>
-                </>
-              ) : (
-                <span className="text-sm text-muted-foreground">Teams not decided yet</span>
-              )}
-            </div>
-          </form>
+            <KnockoutPickForm
+              action={saveKnockoutPrediction}
+              hiddenFields={{
+                groupId,
+                roundKey: match.round_key,
+                slotIndex: String(index),
+                sourceMatchId: match.id
+              }}
+              teams={hasTeams ? teams : []}
+              defaultTeamId={prediction?.predicted_team_id}
+              locked={locked}
+              points={prediction?.points}
+            />
+          </div>
         );
       })}
     </div>

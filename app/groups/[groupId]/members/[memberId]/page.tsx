@@ -46,6 +46,11 @@ export default async function MemberPredictionsPage({
     home_team_id: string | null;
     away_team_id: string | null;
     kickoff_time: string | null;
+    status: string;
+    home_score: number | null;
+    away_score: number | null;
+    home_penalties: number | null;
+    away_penalties: number | null;
   }[];
 
   const firstGroupKickoff = allMatches.find(
@@ -306,6 +311,14 @@ export default async function MemberPredictionsPage({
                           ? `Hidden until ${dateFormat.format(lockTime)}`
                           : "Hidden until lock"}
                     </p>
+                    {match.status === "finished" && match.home_score != null && match.away_score != null ? (
+                      <p className="mt-1 text-xs font-bold">
+                        Result: {match.home_score}–{match.away_score}
+                        {match.home_penalties != null && match.away_penalties != null
+                          ? ` · won on pens (${match.home_penalties}–${match.away_penalties})`
+                          : ""}
+                      </p>
+                    ) : null}
                   </div>
                   <div className="flex items-center gap-2">
                     {matchLocked ? (

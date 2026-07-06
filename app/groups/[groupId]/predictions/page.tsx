@@ -26,6 +26,8 @@ type MatchRow = {
   status: "scheduled" | "live" | "finished" | "postponed" | "cancelled";
   home_score: number | null;
   away_score: number | null;
+  home_penalties: number | null;
+  away_penalties: number | null;
 };
 
 type TeamOption = {
@@ -443,6 +445,14 @@ function KnockoutMode({
                     ? ` · Locks ${dateFormat.format(lockTime)}`
                     : ""}
               </p>
+              {match.status === "finished" && match.home_score != null && match.away_score != null ? (
+                <p className="mt-1 text-xs font-bold">
+                  Result: {match.home_score}–{match.away_score}
+                  {match.home_penalties != null && match.away_penalties != null
+                    ? ` · won on pens (${match.home_penalties}–${match.away_penalties})`
+                    : ""}
+                </p>
+              ) : null}
             </div>
             <KnockoutPickForm
               action={saveKnockoutPrediction}

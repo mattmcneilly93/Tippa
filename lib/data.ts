@@ -189,7 +189,7 @@ export const getAdminPageData = cache(async function getAdminPageData(groupId: s
   const [{ data: matches }, { data: firstGroup }, { data: firstKnockout }] = await Promise.all([
     supabase
       .from("matches")
-      .select("id,stage,home_team_name,away_team_name,kickoff_time,status,home_score,away_score")
+      .select("id,stage,home_team_name,away_team_name,kickoff_time,status,home_score,away_score,home_penalties,away_penalties")
       .eq("tournament_id", group.tournament_id)
       .order("kickoff_time", { ascending: true, nullsFirst: false })
       .limit(24),

@@ -111,10 +111,15 @@ export default async function AdminPage({ params }: { params: Promise<{ groupId:
                   {match.kickoff_time ? ` · ${dateFormat.format(new Date(match.kickoff_time))}` : ""}
                 </p>
               </div>
-              <div className="flex items-center gap-2 text-sm font-black">
+              <div className="flex flex-wrap items-center gap-2 text-sm font-black">
                 <span>
                   {match.home_score ?? "-"} - {match.away_score ?? "-"}
                 </span>
+                {match.home_penalties != null && match.away_penalties != null ? (
+                  <Badge variant="secondary">
+                    won on pens ({match.home_penalties}-{match.away_penalties})
+                  </Badge>
+                ) : null}
                 <Badge variant="outline" className="capitalize">
                   {match.status}
                 </Badge>

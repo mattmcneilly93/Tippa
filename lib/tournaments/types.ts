@@ -42,6 +42,9 @@ export type NormalizedMatch = {
   kickoffTime: string | null;
   homeScore: number | null;
   awayScore: number | null;
+  // Penalty-shootout result, when a knockout tie is decided on penalties.
+  homePenalties: number | null;
+  awayPenalties: number | null;
   status: "scheduled" | "live" | "finished" | "postponed" | "cancelled";
 };
 

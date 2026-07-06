@@ -204,7 +204,7 @@ export async function adminSaveKnockoutPrediction(formData: FormData) {
     await Promise.all([
       service
         .from("matches")
-        .select("tournament_id,stage_type,round_key,home_team_id,away_team_id,status,home_score,away_score")
+        .select("tournament_id,stage_type,round_key,home_team_id,away_team_id,status,home_score,away_score,home_penalties,away_penalties")
         .eq("id", parsed.sourceMatchId)
         .single(),
       service.from("group_prediction_settings").select("*").eq("group_id", parsed.groupId).single()
@@ -222,16 +222,21 @@ export async function adminSaveKnockoutPrediction(formData: FormData) {
 
   // Score just this pick inline — a full-group recalc for a single edit is slow
   // (hundreds of rows) and unnecessary; other members' points are unaffected.
-  const decided =
-    match.status === "finished" &&
-    match.home_score != null &&
-    match.away_score != null &&
-    match.home_score !== match.away_score;
-  const winnerTeamId = decided
-    ? match.home_score! > match.away_score!
-      ? match.home_team_id
-      : match.away_team_id
-    : null;
+  const finished =
+    match.status === "finished" && match.home_score != null && match.away_score != null;
+  let winnerTeamId: string | null = null;
+  if (finished && match.home_score !== match.away_score) {
+    winnerTeamId = match.home_score! > match.away_score! ? match.home_team_id : match.away_team_id;
+  } else if (
+    finished &&
+    match.home_penalties != null &&
+    match.away_penalties != null &&
+    match.home_penalties !== match.away_penalties
+  ) {
+    // Level score settled on penalties.
+    winnerTeamId =
+      match.home_penalties > match.away_penalties ? match.home_team_id : match.away_team_id;
+  }
   const points =
     winnerTeamId && winnerTeamId === parsed.predictedTeamId
       ? knockoutPointsForRound(parsed.roundKey, scoreSettingsFromRow(settingsRow))

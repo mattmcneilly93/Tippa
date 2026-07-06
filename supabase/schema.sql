@@ -113,6 +113,8 @@ create table public.matches (
   status match_status not null default 'scheduled',
   home_score int,
   away_score int,
+  home_penalties int,
+  away_penalties int,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique(tournament_id, external_id)

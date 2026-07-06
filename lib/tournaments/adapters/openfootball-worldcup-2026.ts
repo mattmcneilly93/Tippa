@@ -16,6 +16,8 @@ type OpenFootballMatch = {
   group?: string;
   score?: {
     ft?: [number, number];
+    et?: [number, number];
+    p?: [number, number];
   };
 };
 
@@ -109,7 +111,11 @@ export const openFootballWorldCup2026Adapter: TournamentAdapter = {
 
     const source = (await response.json()) as OpenFootballTournament;
     const matches = source.matches.map((match, index): NormalizedMatch => {
-      const score = match.score?.ft ?? [null, null];
+      // Prefer the after-extra-time score as the on-field result; fall back to
+      // full-time. Penalties (when a knockout tie is settled on spot kicks) are
+      // kept separately so the winner can be resolved despite a level score.
+      const score = match.score?.et ?? match.score?.ft ?? [null, null];
+      const penalties = match.score?.p ?? [null, null];
       const round = classifyRound(match);
       return {
         externalId: externalIdFor(match, index),
@@ -122,6 +128,8 @@ export const openFootballWorldCup2026Adapter: TournamentAdapter = {
         kickoffTime: normalizeKickoff(match.date, match.time),
         homeScore: score[0],
         awayScore: score[1],
+        homePenalties: penalties[0],
+        awayPenalties: penalties[1],
         status: statusFor(match)
       };
     });

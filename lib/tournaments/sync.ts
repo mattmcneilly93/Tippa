@@ -76,7 +76,9 @@ export async function syncTournament(tournamentCode: string) {
     kickoff_time: match.kickoffTime,
     status: match.status,
     home_score: match.homeScore,
-    away_score: match.awayScore
+    away_score: match.awayScore,
+    home_penalties: match.homePenalties,
+    away_penalties: match.awayPenalties
   }));
 
   const { error: matchesError } = await supabase.from("matches").upsert(rows, {

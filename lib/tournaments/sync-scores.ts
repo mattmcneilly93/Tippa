@@ -23,6 +23,8 @@ type MatchRow = {
   away_team_id: string | null;
   home_score: number | null;
   away_score: number | null;
+  home_penalties: number | null;
+  away_penalties: number | null;
 };
 
 type SettingsRow = Partial<ScoreSettings> & {
@@ -53,12 +55,22 @@ function winnerTeamId(match: MatchRow) {
     match.home_score == null ||
     match.away_score == null ||
     !match.home_team_id ||
-    !match.away_team_id ||
-    match.home_score === match.away_score
+    !match.away_team_id
   ) {
     return null;
   }
-  return match.home_score > match.away_score ? match.home_team_id : match.away_team_id;
+  if (match.home_score !== match.away_score) {
+    return match.home_score > match.away_score ? match.home_team_id : match.away_team_id;
+  }
+  // Level after regulation/extra time — settle on the penalty shootout.
+  if (
+    match.home_penalties != null &&
+    match.away_penalties != null &&
+    match.home_penalties !== match.away_penalties
+  ) {
+    return match.home_penalties > match.away_penalties ? match.home_team_id : match.away_team_id;
+  }
+  return null;
 }
 
 function groupStandings(matches: MatchRow[]): RankedTeam[] {

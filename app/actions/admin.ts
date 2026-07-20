@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireAppUser } from "@/lib/dev-auth";
 import { createServiceClient } from "@/lib/supabase/server";
-import { knockoutPointsForRound, scoreSettingsFromRow } from "@/lib/scoring";
+import { knockoutPointsForRound, knockoutWinnerTeamId, scoreSettingsFromRow } from "@/lib/scoring";
 import { syncTournament } from "@/lib/tournaments/sync";
 import { recalculateScoresForGroup } from "@/lib/tournaments/sync-scores";
 
@@ -222,21 +222,7 @@ export async function adminSaveKnockoutPrediction(formData: FormData) {
 
   // Score just this pick inline — a full-group recalc for a single edit is slow
   // (hundreds of rows) and unnecessary; other members' points are unaffected.
-  const finished =
-    match.status === "finished" && match.home_score != null && match.away_score != null;
-  let winnerTeamId: string | null = null;
-  if (finished && match.home_score !== match.away_score) {
-    winnerTeamId = match.home_score! > match.away_score! ? match.home_team_id : match.away_team_id;
-  } else if (
-    finished &&
-    match.home_penalties != null &&
-    match.away_penalties != null &&
-    match.home_penalties !== match.away_penalties
-  ) {
-    // Level score settled on penalties.
-    winnerTeamId =
-      match.home_penalties > match.away_penalties ? match.home_team_id : match.away_team_id;
-  }
+  const winnerTeamId = knockoutWinnerTeamId(match);
   const points =
     winnerTeamId && winnerTeamId === parsed.predictedTeamId
       ? knockoutPointsForRound(parsed.roundKey, scoreSettingsFromRow(settingsRow))

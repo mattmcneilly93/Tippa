@@ -204,6 +204,41 @@ export function calculateGroupTablePoints(
   }, 0);
 }
 
+export type KnockoutResult = {
+  status: "scheduled" | "live" | "finished" | "postponed" | "cancelled";
+  home_team_id: string | null;
+  away_team_id: string | null;
+  home_score: number | null;
+  away_score: number | null;
+  home_penalties: number | null;
+  away_penalties: number | null;
+};
+
+// Resolve the winner of a knockout fixture: by score, or — when level after
+// regulation/extra time — by the penalty shootout. Returns null if undecided.
+export function knockoutWinnerTeamId(match: KnockoutResult): string | null {
+  if (
+    match.status !== "finished" ||
+    match.home_score == null ||
+    match.away_score == null ||
+    !match.home_team_id ||
+    !match.away_team_id
+  ) {
+    return null;
+  }
+  if (match.home_score !== match.away_score) {
+    return match.home_score > match.away_score ? match.home_team_id : match.away_team_id;
+  }
+  if (
+    match.home_penalties != null &&
+    match.away_penalties != null &&
+    match.home_penalties !== match.away_penalties
+  ) {
+    return match.home_penalties > match.away_penalties ? match.home_team_id : match.away_team_id;
+  }
+  return null;
+}
+
 export function knockoutPointsForRound(
   roundKey: RoundKey,
   settings: ScoreSettings = defaultScoreSettings

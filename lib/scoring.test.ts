@@ -4,7 +4,9 @@ import {
   calculateGroupTablePoints,
   calculateOutcomePoints,
   knockoutPointsForRound,
-  scoringPresets
+  knockoutWinnerTeamId,
+  scoringPresets,
+  type KnockoutResult
 } from "./scoring";
 
 const finished = { status: "finished" as const };
@@ -92,5 +94,48 @@ describe("knockout scoring", () => {
 
   it("supports high-stakes champion weighting", () => {
     expect(knockoutPointsForRound("final", scoringPresets.high_stakes)).toBe(20);
+  });
+});
+
+describe("knockout winner resolution", () => {
+  const base: KnockoutResult = {
+    status: "finished",
+    home_team_id: "home",
+    away_team_id: "away",
+    home_score: null,
+    away_score: null,
+    home_penalties: null,
+    away_penalties: null
+  };
+
+  it("picks the higher score in regulation or extra time", () => {
+    expect(knockoutWinnerTeamId({ ...base, home_score: 3, away_score: 2 })).toBe("home");
+    expect(knockoutWinnerTeamId({ ...base, home_score: 1, away_score: 2 })).toBe("away");
+  });
+
+  it("settles a level score on penalties", () => {
+    expect(
+      knockoutWinnerTeamId({ ...base, home_score: 1, away_score: 1, home_penalties: 2, away_penalties: 4 })
+    ).toBe("away");
+  });
+
+  it("has no winner when level with no shootout, or not finished", () => {
+    expect(knockoutWinnerTeamId({ ...base, home_score: 1, away_score: 1 })).toBeNull();
+    expect(knockoutWinnerTeamId({ ...base, status: "scheduled", home_score: 2, away_score: 1 })).toBeNull();
+  });
+
+  it("awards champion points for a correct final decided on penalties", () => {
+    const finalMatch: KnockoutResult = {
+      ...base,
+      home_score: 1,
+      away_score: 1,
+      home_penalties: 5,
+      away_penalties: 3
+    };
+    const winner = knockoutWinnerTeamId(finalMatch);
+    const pickedWinner = "home";
+    expect(winner).toBe(pickedWinner);
+    expect(winner === pickedWinner ? knockoutPointsForRound("final") : 0).toBe(13);
+    expect(winner === pickedWinner ? knockoutPointsForRound("third_place") : 0).toBe(3);
   });
 });

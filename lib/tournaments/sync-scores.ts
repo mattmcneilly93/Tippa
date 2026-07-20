@@ -4,6 +4,7 @@ import {
   calculateGroupTablePoints,
   calculateOutcomePoints,
   knockoutPointsForRound,
+  knockoutWinnerTeamId,
   outcomeForScore,
   scoreSettingsFromRow,
   type MatchOutcome,
@@ -49,29 +50,6 @@ async function runInChunks<T>(items: T[], run: (item: T) => PromiseLike<unknown>
   }
 }
 
-function winnerTeamId(match: MatchRow) {
-  if (
-    match.status !== "finished" ||
-    match.home_score == null ||
-    match.away_score == null ||
-    !match.home_team_id ||
-    !match.away_team_id
-  ) {
-    return null;
-  }
-  if (match.home_score !== match.away_score) {
-    return match.home_score > match.away_score ? match.home_team_id : match.away_team_id;
-  }
-  // Level after regulation/extra time — settle on the penalty shootout.
-  if (
-    match.home_penalties != null &&
-    match.away_penalties != null &&
-    match.home_penalties !== match.away_penalties
-  ) {
-    return match.home_penalties > match.away_penalties ? match.home_team_id : match.away_team_id;
-  }
-  return null;
-}
 
 function groupStandings(matches: MatchRow[]): RankedTeam[] {
   const table = new Map<string, { teamId: string; points: number; goalDifference: number; goalsFor: number }>();
@@ -325,7 +303,7 @@ async function recalculateWithMatches(
   const knockoutUpdates = (knockoutPredictions ?? []).map((prediction) => {
     const match = prediction.source_match_id ? matchById.get(prediction.source_match_id) : null;
     const points =
-      match && winnerTeamId(match) === prediction.predicted_team_id
+      match && knockoutWinnerTeamId(match) === prediction.predicted_team_id
         ? knockoutPointsForRound(prediction.round_key as RoundKey, settingsMap.get(prediction.group_id))
         : 0;
 
